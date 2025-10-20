@@ -1,0 +1,50 @@
+[
+  {
+    "name": "acolyte",
+    "skill_proficiencies": ["Insight", "Religion"]
+  },
+  {
+    "name": "criminal",
+    "skill_proficiencies": ["Deception", "Stealth"]
+  },
+  {
+    "name": "folk hero",
+    "skill_proficiencies": ["Animal Handling", "Survival"]
+  },
+  {
+    "name": "noble",
+    "skill_proficiencies": ["History", "Persuasion"]
+  },
+  {
+    "name": "sage",
+    "skill_proficiencies": ["Arcana", "History"]
+  },
+  {
+    "name": "soldier",
+    "skill_proficiencies": ["Athletics", "Intimidation"]
+  },
+  {
+    "name": "urchin",
+    "skill_proficiencies": ["Sleight of Hand", "Stealth"]
+  },
+  {
+    "name": "entertainer",
+    "skill_proficiencies": ["Acrobatics", "Performance"]
+  },
+  {
+    "name": "guild artisan",
+    "skill_proficiencies": ["Insight", "Persuasion"]
+  },
+  {
+    "name": "hermit",
+    "skill_proficiencies": ["Medicine", "Religion"]
+  },
+  {
+    "name": "outlander",
+    "skill_proficiencies": ["Athletics", "Survival"]
+  },
+  {
+    "name": "charlatan",
+    "skill_proficiencies": ["Deception", "Sleight of Hand"]
+  }
+]

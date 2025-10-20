@@ -1,0 +1,62 @@
+[
+  {
+    "name": "barbarian",
+    "skill_proficiencies": ["Animal Handling", "Athletics", "Intimidation", "Nature", "Perception", "Survival"],
+    "skill_count": 2
+  },
+  {
+    "name": "bard",
+    "skill_proficiencies": ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"],
+    "skill_count": 3
+  },
+  {
+    "name": "cleric",
+    "skill_proficiencies": ["History", "Insight", "Medicine", "Persuasion", "Religion"],
+    "skill_count": 2
+  },
+  {
+    "name": "druid",
+    "skill_proficiencies": ["Arcana", "Animal Handling", "Insight", "Medicine", "Nature", "Perception", "Religion", "Survival"],
+    "skill_count": 2
+  },
+  {
+    "name": "fighter",
+    "skill_proficiencies": ["Acrobatics", "Animal Handling", "Athletics", "History", "Insight", "Intimidation", "Perception", "Survival"],
+    "skill_count": 2
+  },
+  {
+    "name": "monk",
+    "skill_proficiencies": ["Acrobatics", "Athletics", "History", "Insight", "Religion", "Stealth"],
+    "skill_count": 2
+  },
+  {
+    "name": "paladin",
+    "skill_proficiencies": ["Athletics", "Insight", "Intimidation", "Medicine", "Persuasion", "Religion"],
+    "skill_count": 2
+  },
+  {
+    "name": "ranger",
+    "skill_proficiencies": ["Animal Handling", "Athletics", "Insight", "Investigation", "Nature", "Perception", "Stealth", "Survival"],
+    "skill_count": 3
+  },
+  {
+    "name": "rogue",
+    "skill_proficiencies": ["Acrobatics", "Athletics", "Deception", "Insight", "Intimidation", "Investigation", "Perception", "Performance", "Persuasion", "Sleight of Hand", "Stealth"],
+    "skill_count": 4
+  },
+  {
+    "name": "sorcerer",
+    "skill_proficiencies": ["Arcana", "Deception", "Insight", "Intimidation", "Persuasion", "Religion"],
+    "skill_count": 2
+  },
+  {
+    "name": "warlock",
+    "skill_proficiencies": ["Arcana", "Deception", "History", "Intimidation", "Investigation", "Nature", "Religion"],
+    "skill_count": 2
+  },
+  {
+    "name": "wizard",
+    "skill_proficiencies": ["Arcana", "History", "Insight", "Investigation", "Medicine", "Religion"],
+    "skill_count": 2
+  }
+]

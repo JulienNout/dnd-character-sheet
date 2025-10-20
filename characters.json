@@ -1,0 +1,72 @@
+{
+  "characters": [
+    {
+      "name": "Merry Brandybuck",
+      "race": "lightfoot halfling",
+      "class": "rogue",
+      "level": 1,
+      "str": 8,
+      "dex": 17,
+      "con": 14,
+      "int": 10,
+      "wis": 12,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "main_hand": "shortsword",
+      "armor": "chain shirt",
+      "shield": "shield"
+    },
+    {
+      "name": "Pippin Took",
+      "race": "lightfoot halfling",
+      "class": "rogue",
+      "level": 1,
+      "str": 12,
+      "dex": 17,
+      "con": 14,
+      "int": 10,
+      "wis": 8,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "off_hand": "dagger"
+    },
+    {
+      "name": "Kaelthar Stormcloud",
+      "race": "dwarf",
+      "class": "fighter",
+      "level": 3,
+      "str": 16,
+      "dex": 10,
+      "con": 15,
+      "int": 8,
+      "wis": 12,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "animal handling",
+        "insight",
+        "religion"
+      ]
+    }
+  ]
+}
