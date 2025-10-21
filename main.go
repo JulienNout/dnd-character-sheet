@@ -7,6 +7,7 @@ import (
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
 	"modules/dndcharactersheet/internal/equipment"
+	"modules/dndcharactersheet/internal/spellcasting"
 	"modules/dndcharactersheet/internal/storage"
 	"os"
 	"strings"
@@ -357,8 +358,100 @@ func main() {
 		}
 
 	case "learn-spell":
+		learnCmd := flag.NewFlagSet("learn-spell", flag.ExitOnError)
+		name := learnCmd.String("name", "", "character name (required)")
+		spellName := learnCmd.String("spell", "", "spell name (required)")
+		learnCmd.Parse(os.Args[2:])
+		if *name == "" || *spellName == "" {
+			fmt.Println("-name and -spell are required")
+			os.Exit(2)
+		}
+		characterStorage := storage.NewSingleFileStorage("characters.json")
+		char, err := characterStorage.Load(*name)
+		if err != nil {
+			fmt.Printf("character \"%s\" not found\n", *name)
+			os.Exit(1)
+		}
+		// Always assign spellcasting for the character's class and level
+		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+		char.Spellcasting = sc
+		if sc.CasterType == spellcasting.CasterNone {
+			fmt.Println(spellcasting.LearnSpell(&sc, spellcasting.Spell{Name: *spellName}))
+			os.Exit(0)
+		}
+		spells, err := spellcasting.LoadSpells("5e-SRD-Spells.csv")
+		if err != nil {
+			fmt.Println("Could not load spells:", err)
+			os.Exit(1)
+		}
+		var foundSpell *spellcasting.Spell
+		for _, s := range spells {
+			if strings.EqualFold(s.Name, *spellName) && strings.Contains(strings.ToLower(s.Class), strings.ToLower(char.Class)) {
+				foundSpell = &s
+				break
+			}
+		}
+		if foundSpell == nil {
+			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
+			os.Exit(1)
+		}
+		result := spellcasting.LearnSpell(&sc, *foundSpell)
+		char.Spellcasting = sc
+		err = characterStorage.Save(char)
+		if err != nil {
+			fmt.Printf("error saving character: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(result)
+		return
 
 	case "prepare-spell":
+		prepareCmd := flag.NewFlagSet("prepare-spell", flag.ExitOnError)
+		name := prepareCmd.String("name", "", "character name (required)")
+		spellName := prepareCmd.String("spell", "", "spell name (required)")
+		prepareCmd.Parse(os.Args[2:])
+		if *name == "" || *spellName == "" {
+			fmt.Println("-name and -spell are required")
+			os.Exit(2)
+		}
+		characterStorage := storage.NewSingleFileStorage("characters.json")
+		char, err := characterStorage.Load(*name)
+		if err != nil {
+			fmt.Printf("character \"%s\" not found\n", *name)
+			os.Exit(1)
+		}
+		// Always assign spellcasting for the character's class and level
+		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+		char.Spellcasting = sc
+		if sc.CasterType == spellcasting.CasterNone {
+			fmt.Println(spellcasting.PrepareSpell(&sc, spellcasting.Spell{Name: *spellName}))
+			os.Exit(0)
+		}
+		spells, err := spellcasting.LoadSpells("5e-SRD-Spells.csv")
+		if err != nil {
+			fmt.Println("Could not load spells:", err)
+			os.Exit(1)
+		}
+		var foundSpell *spellcasting.Spell
+		for _, s := range spells {
+			if strings.EqualFold(s.Name, *spellName) && strings.Contains(strings.ToLower(s.Class), strings.ToLower(char.Class)) {
+				foundSpell = &s
+				break
+			}
+		}
+		if foundSpell == nil {
+			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
+			os.Exit(1)
+		}
+		result := spellcasting.PrepareSpell(&sc, *foundSpell)
+		char.Spellcasting = sc
+		err = characterStorage.Save(char)
+		if err != nil {
+			fmt.Printf("error saving character: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(result)
+		return
 
 	default:
 		usage()
