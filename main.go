@@ -10,6 +10,7 @@ import (
 	"modules/dndcharactersheet/internal/spellcasting"
 	"modules/dndcharactersheet/internal/storage"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -157,6 +158,9 @@ func main() {
 
 		// fmt.Printf("Character: %+v\n", char)
 
+		// Always assign spellcasting for the character's class and level
+		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+
 		// Prints character sheet
 		characterService := characterModel.NewCharacterService()
 		fmt.Printf("Name: %s\n", char.Name)
@@ -173,6 +177,29 @@ func main() {
 		fmt.Printf("  CHA: %d (%+d)\n", char.Cha, characterService.AbilityModifier(char.Cha))
 		fmt.Printf("Proficiency bonus: %+d\n", char.Proficiency)
 		fmt.Printf("Skill proficiencies: %s\n", strings.Join(char.SkillProficiencies, ", "))
+
+		// Print spell slots if any
+		if len(sc.SpellSlots) > 0 {
+			fmt.Println("Spell slots:")
+			// Only print Level 0: 4 for classes that have cantrips
+			cantripClasses := map[string]bool{
+				"wizard": true, "sorcerer": true, "warlock": true, "bard": true, "cleric": true, "druid": true,
+			}
+			if cantripClasses[strings.ToLower(char.Class)] {
+				fmt.Println("  Level 0: 4")
+			}
+			levels := make([]int, 0, len(sc.SpellSlots))
+			for lvl := range sc.SpellSlots {
+				levels = append(levels, lvl)
+			}
+			sort.Ints(levels)
+			for _, lvl := range levels {
+				if lvl == 0 {
+					continue
+				}
+				fmt.Printf("  Level %d: %d\n", lvl, sc.SpellSlots[lvl])
+			}
+		}
 
 		// Equipment (show if equipped)
 		if char.MainHand != "" {
