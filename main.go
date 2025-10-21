@@ -7,8 +7,10 @@ import (
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
 	"modules/dndcharactersheet/internal/equipment"
+	"modules/dndcharactersheet/internal/spellcasting"
 	"modules/dndcharactersheet/internal/storage"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -156,6 +158,9 @@ func main() {
 
 		// fmt.Printf("Character: %+v\n", char)
 
+		// Always assign spellcasting for the character's class and level
+		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+
 		// Prints character sheet
 		characterService := characterModel.NewCharacterService()
 		fmt.Printf("Name: %s\n", char.Name)
@@ -172,6 +177,29 @@ func main() {
 		fmt.Printf("  CHA: %d (%+d)\n", char.Cha, characterService.AbilityModifier(char.Cha))
 		fmt.Printf("Proficiency bonus: %+d\n", char.Proficiency)
 		fmt.Printf("Skill proficiencies: %s\n", strings.Join(char.SkillProficiencies, ", "))
+
+		// Print spell slots if any
+		if len(sc.SpellSlots) > 0 {
+			fmt.Println("Spell slots:")
+			// Only print Level 0: 4 for classes that have cantrips
+			cantripClasses := map[string]bool{
+				"wizard": true, "sorcerer": true, "warlock": true, "bard": true, "cleric": true, "druid": true,
+			}
+			if cantripClasses[strings.ToLower(char.Class)] {
+				fmt.Println("  Level 0: 4")
+			}
+			levels := make([]int, 0, len(sc.SpellSlots))
+			for lvl := range sc.SpellSlots {
+				levels = append(levels, lvl)
+			}
+			sort.Ints(levels)
+			for _, lvl := range levels {
+				if lvl == 0 {
+					continue
+				}
+				fmt.Printf("  Level %d: %d\n", lvl, sc.SpellSlots[lvl])
+			}
+		}
 
 		// Equipment (show if equipped)
 		if char.MainHand != "" {
@@ -357,8 +385,100 @@ func main() {
 		}
 
 	case "learn-spell":
+		learnCmd := flag.NewFlagSet("learn-spell", flag.ExitOnError)
+		name := learnCmd.String("name", "", "character name (required)")
+		spellName := learnCmd.String("spell", "", "spell name (required)")
+		learnCmd.Parse(os.Args[2:])
+		if *name == "" || *spellName == "" {
+			fmt.Println("-name and -spell are required")
+			os.Exit(2)
+		}
+		characterStorage := storage.NewSingleFileStorage("characters.json")
+		char, err := characterStorage.Load(*name)
+		if err != nil {
+			fmt.Printf("character \"%s\" not found\n", *name)
+			os.Exit(1)
+		}
+		// Always assign spellcasting for the character's class and level
+		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+		char.Spellcasting = sc
+		if sc.CasterType == spellcasting.CasterNone {
+			fmt.Println(spellcasting.LearnSpell(&sc, spellcasting.Spell{Name: *spellName}))
+			os.Exit(0)
+		}
+		spells, err := spellcasting.LoadSpells("5e-SRD-Spells.csv")
+		if err != nil {
+			fmt.Println("Could not load spells:", err)
+			os.Exit(1)
+		}
+		var foundSpell *spellcasting.Spell
+		for _, s := range spells {
+			if strings.EqualFold(s.Name, *spellName) && strings.Contains(strings.ToLower(s.Class), strings.ToLower(char.Class)) {
+				foundSpell = &s
+				break
+			}
+		}
+		if foundSpell == nil {
+			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
+			os.Exit(1)
+		}
+		result := spellcasting.LearnSpell(&sc, *foundSpell)
+		char.Spellcasting = sc
+		err = characterStorage.Save(char)
+		if err != nil {
+			fmt.Printf("error saving character: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(result)
+		return
 
 	case "prepare-spell":
+		prepareCmd := flag.NewFlagSet("prepare-spell", flag.ExitOnError)
+		name := prepareCmd.String("name", "", "character name (required)")
+		spellName := prepareCmd.String("spell", "", "spell name (required)")
+		prepareCmd.Parse(os.Args[2:])
+		if *name == "" || *spellName == "" {
+			fmt.Println("-name and -spell are required")
+			os.Exit(2)
+		}
+		characterStorage := storage.NewSingleFileStorage("characters.json")
+		char, err := characterStorage.Load(*name)
+		if err != nil {
+			fmt.Printf("character \"%s\" not found\n", *name)
+			os.Exit(1)
+		}
+		// Always assign spellcasting for the character's class and level
+		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+		char.Spellcasting = sc
+		if sc.CasterType == spellcasting.CasterNone {
+			fmt.Println(spellcasting.PrepareSpell(&sc, spellcasting.Spell{Name: *spellName}))
+			os.Exit(0)
+		}
+		spells, err := spellcasting.LoadSpells("5e-SRD-Spells.csv")
+		if err != nil {
+			fmt.Println("Could not load spells:", err)
+			os.Exit(1)
+		}
+		var foundSpell *spellcasting.Spell
+		for _, s := range spells {
+			if strings.EqualFold(s.Name, *spellName) && strings.Contains(strings.ToLower(s.Class), strings.ToLower(char.Class)) {
+				foundSpell = &s
+				break
+			}
+		}
+		if foundSpell == nil {
+			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
+			os.Exit(1)
+		}
+		result := spellcasting.PrepareSpell(&sc, *foundSpell)
+		char.Spellcasting = sc
+		err = characterStorage.Save(char)
+		if err != nil {
+			fmt.Printf("error saving character: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(result)
+		return
 
 	default:
 		usage()
