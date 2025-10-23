@@ -176,7 +176,7 @@ func GetSpell(index string) (*SpellEnriched, error) {
 	return &spell, nil
 }
 
-// FetchSpellsWithWorkers fetches spell details for a list of indexes using a worker pool
+// Fetches spell details for a list of indexes using a worker pool
 func FetchSpellsWithWorkers(indexes []string, workerCount int) []*SpellEnriched {
 	type job struct {
 		i   int
