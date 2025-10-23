@@ -181,12 +181,10 @@ func main() {
 		// Print spell slots if any
 		if len(sc.SpellSlots) > 0 {
 			fmt.Println("Spell slots:")
-			// Only print Level 0: 4 for classes that have cantrips
-			cantripClasses := map[string]bool{
-				"wizard": true, "sorcerer": true, "warlock": true, "bard": true, "cleric": true, "druid": true,
-			}
-			if cantripClasses[strings.ToLower(char.Class)] {
-				fmt.Println("  Level 0: 4")
+			// Print correct Level 0: N for classes that have cantrips
+			cantrips := spellcasting.GetCantripsKnown(char.Class, char.Level)
+			if cantrips > 0 {
+				fmt.Printf("  Level 0: %d\n", cantrips)
 			}
 			levels := make([]int, 0, len(sc.SpellSlots))
 			for lvl := range sc.SpellSlots {
