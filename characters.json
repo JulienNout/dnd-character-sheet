@@ -19,7 +19,20 @@
         "insight",
         "religion"
       ],
-      "spellcasting": null
+      "spellcasting": {
+        "CasterType": "full",
+        "KnownSpells": [],
+        "PreparedSpells": [
+          "Arcane Eye"
+        ],
+        "SpellSlots": {
+          "1": 4,
+          "2": 3,
+          "3": 3,
+          "4": 3,
+          "5": 2
+        }
+      }
     }
   ]
 }

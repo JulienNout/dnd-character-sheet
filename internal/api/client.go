@@ -4,9 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
-const BaseURL = "http://localhost:3000/api"
+const BaseURL = "https://www.dnd5eapi.co/api"
+
+// ToAPIIndex converts a spell or item name to the API index format (kebab-case)
+func ToAPIIndex(name string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
+}
 
 // WeaponEnriched holds extra weapon info from the API
 type WeaponEnriched struct {
@@ -177,10 +183,10 @@ func GetSpell(index string) (*SpellEnriched, error) {
 }
 
 // Fetches spell details for a list of indexes using a worker pool
-func FetchSpellsWithWorkers(indexes []string, workerCount int) []*SpellEnriched {
+func FetchSpellsWithWorkers(names []string, workerCount int) []*SpellEnriched {
 	type job struct {
-		i   int
-		idx string
+		i    int
+		name string
 	}
 	type result struct {
 		i     int
@@ -188,29 +194,30 @@ func FetchSpellsWithWorkers(indexes []string, workerCount int) []*SpellEnriched 
 		err   error
 	}
 
-	jobs := make(chan job, len(indexes))
-	results := make(chan result, len(indexes))
+	jobs := make(chan job, len(names))
+	results := make(chan result, len(names))
 
 	for w := 0; w < workerCount; w++ {
 		go func() {
 			for j := range jobs {
-				spell, err := GetSpell(j.idx)
+				idx := ToAPIIndex(j.name)
+				spell, err := GetSpell(idx)
 				results <- result{j.i, spell, err}
 			}
 		}()
 	}
 
-	for i, idx := range indexes {
-		jobs <- job{i, idx}
+	for i, name := range names {
+		jobs <- job{i, name}
 	}
 	close(jobs)
 
-	out := make([]*SpellEnriched, len(indexes))
-	for i := 0; i < len(indexes); i++ {
+	out := make([]*SpellEnriched, len(names))
+	for i := 0; i < len(names); i++ {
 		res := <-results
 		out[res.i] = res.spell
 		if res.err != nil {
-			fmt.Printf("Failed to fetch spell %s: %v\n", indexes[res.i], res.err)
+			fmt.Printf("Failed to fetch spell %s: %v\n", names[res.i], res.err)
 		}
 	}
 	return out

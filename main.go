@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"modules/dndcharactersheet/internal/api"
 	backgroundModel "modules/dndcharactersheet/internal/background"
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
@@ -158,8 +160,18 @@ func main() {
 
 		// fmt.Printf("Character: %+v\n", char)
 
-		// Always assign spellcasting for the character's class and level
-		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+		// Unmarshal the character's spellcasting data (interface{}) into the correct struct
+		var sc spellcasting.CharacterSpellcasting
+		spellcastingBytes, err := json.Marshal(char.Spellcasting)
+		if err != nil {
+			fmt.Println("Error marshaling spellcasting data:", err)
+			os.Exit(1)
+		}
+		err = json.Unmarshal(spellcastingBytes, &sc)
+		if err != nil {
+			fmt.Println("Error unmarshaling spellcasting data:", err)
+			os.Exit(1)
+		}
 
 		// Prints character sheet
 		characterService := characterModel.NewCharacterService()
@@ -196,6 +208,42 @@ func main() {
 					continue
 				}
 				fmt.Printf("  Level %d: %d\n", lvl, sc.SpellSlots[lvl])
+			}
+		}
+
+		// Enrich and print both known and prepared spells (API first, fallback to CSV)
+		// Combine both lists, but keep labels distinct if both exist
+		spellLists := []struct {
+			label  string
+			spells []string
+		}{
+			{"Known Spells", sc.KnownSpells},
+			{"Prepared Spells", sc.PreparedSpells},
+		}
+		for _, sl := range spellLists {
+			if len(sl.spells) > 0 {
+				// fmt.Println(sl.label + ":")
+				apiEnriched := api.FetchSpellsWithWorkers(sl.spells, 5)
+				csvSpells, _ := spellcasting.LoadSpells("5e-SRD-Spells.csv")
+				for i, spellIndex := range sl.spells {
+					if apiEnriched != nil && i < len(apiEnriched) && apiEnriched[i] != nil {
+						// s := apiEnriched[i]
+						// fmt.Printf("  %s (School: %s, Range: %s)\n", s.Name, s.School.Name, s.Range)
+					} else {
+						// Fallback: find in CSV by name (case-insensitive)
+						found := false
+						for _, csvSpell := range csvSpells {
+							if strings.EqualFold(csvSpell.Name, spellIndex) {
+								// fmt.Printf("  %s (from CSV file)\n", csvSpell.Name)
+								found = true
+								break
+							}
+						}
+						if !found {
+							// fmt.Printf("  %s (not found)\n", spellIndex)
+						}
+					}
+				}
 			}
 		}
 
