@@ -1,5 +1,7 @@
 package spellcasting
 
+import "strings"
+
 type CasterType string
 
 const (
@@ -35,6 +37,30 @@ var CasterTypeByClass = map[string]CasterType{
 	"paladin":  CasterHalf,
 	"ranger":   CasterHalf,
 	"warlock":  CasterPact,
+}
+
+// CantripsKnownByClassAndLevel maps class names to a slice where index is level and value is cantrips known
+var CantripsKnownByClassAndLevel = map[string][]int{
+	"bard":     {0, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
+	"cleric":   {0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4},
+	"druid":    {0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
+	"sorcerer": {0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5},
+	"warlock":  {0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
+	"wizard":   {0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4},
+}
+
+// GetCantripsKnown returns the number of cantrips known for a class and level
+func GetCantripsKnown(class string, level int) int {
+	class = strings.ToLower(class)
+	if arr, ok := CantripsKnownByClassAndLevel[class]; ok {
+		if level >= 1 && level < len(arr) {
+			return arr[level]
+		}
+		if level >= len(arr) {
+			return arr[len(arr)-1]
+		}
+	}
+	return 0
 }
 
 // FullCasterSlots[level][slotLevel] = slots
