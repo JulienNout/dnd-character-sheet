@@ -71,27 +71,6 @@
       "spellcasting": null
     },
     {
-      "name": "Ragna Wolfblood",
-      "race": "half orc",
-      "class": "barbarian",
-      "level": 1,
-      "str": 15,
-      "dex": 14,
-      "con": 13,
-      "int": 8,
-      "wis": 12,
-      "cha": 10,
-      "background": "acolyte",
-      "proficiency": 2,
-      "skill_proficiencies": [
-        "animal handling",
-        "athletics",
-        "insight",
-        "religion"
-      ],
-      "spellcasting": null
-    },
-    {
       "name": "Gorrak Bearhide",
       "race": "human",
       "class": "barbarian",
@@ -133,6 +112,7 @@
         "religion"
       ],
       "armor": "half plate armor",
+      "shield": "shield",
       "spellcasting": null
     },
     {
@@ -222,6 +202,70 @@
         "insight",
         "religion"
       ],
+      "spellcasting": null
+    },
+    {
+      "name": "Ragna Wolfblood",
+      "race": "half orc",
+      "class": "barbarian",
+      "level": 1,
+      "str": 17,
+      "dex": 14,
+      "con": 14,
+      "int": 8,
+      "wis": 12,
+      "cha": 10,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "animal handling",
+        "athletics",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
+    },
+    {
+      "name": "Tashi Cloudwalker",
+      "race": "human",
+      "class": "monk",
+      "level": 1,
+      "str": 11,
+      "dex": 16,
+      "con": 14,
+      "int": 9,
+      "wis": 15,
+      "cha": 13,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
+    },
+    {
+      "name": "Joren Ironstep",
+      "race": "human",
+      "class": "monk",
+      "level": 1,
+      "str": 14,
+      "dex": 13,
+      "con": 15,
+      "int": 9,
+      "wis": 16,
+      "cha": 11,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "insight",
+        "religion"
+      ],
+      "armor": "chain shirt",
       "spellcasting": null
     }
   ]

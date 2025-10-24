@@ -4,10 +4,24 @@ import (
 	"fmt"
 	"modules/dndcharactersheet/internal/api"
 	characterModel "modules/dndcharactersheet/internal/character"
+	"strings"
 )
 
 // CalculateArmorClass returns the armor class for a character using real-time API enrichment.
 func CalculateArmorClass(char *characterModel.Character, service *characterModel.CharacterService) int {
+	// Barbarian Unarmored Defense: AC = 10 + Dex mod + Con mod (+ shield bonus if equipped) if no armor
+	if strings.ToLower(char.Class) == "barbarian" && char.Armor == "" {
+		ac := 10 + service.AbilityModifier(char.Dex) + service.AbilityModifier(char.Con)
+		if char.Shield != "" {
+			ac += 2 // D&D 5e shield bonus
+		}
+		return ac
+	}
+	// Monk Unarmored Defense: AC = 10 + Dex mod + Wis mod if no armor and no shield
+	if strings.ToLower(char.Class) == "monk" && char.Armor == "" && char.Shield == "" {
+		return 10 + service.AbilityModifier(char.Dex) + service.AbilityModifier(char.Wis)
+	}
+
 	baseAC := 10
 	dexMod := service.AbilityModifier(char.Dex)
 
