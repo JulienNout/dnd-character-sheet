@@ -134,6 +134,95 @@
       ],
       "armor": "half plate armor",
       "spellcasting": null
+    },
+    {
+      "name": "Merry Brandybuck",
+      "race": "lightfoot halfling",
+      "class": "rogue",
+      "level": 1,
+      "str": 8,
+      "dex": 17,
+      "con": 14,
+      "int": 10,
+      "wis": 12,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "main_hand": "shortsword",
+      "armor": "chain shirt",
+      "shield": "shield",
+      "spellcasting": null
+    },
+    {
+      "name": "Gandalf",
+      "race": "human",
+      "class": "wizard",
+      "level": 20,
+      "str": 9,
+      "dex": 11,
+      "con": 13,
+      "int": 15,
+      "wis": 16,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 6,
+      "skill_proficiencies": [
+        "arcana",
+        "history",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
+    },
+    {
+      "name": "Obi-Wan Kenobi",
+      "race": "human",
+      "class": "paladin",
+      "level": 20,
+      "str": 13,
+      "dex": 9,
+      "con": 15,
+      "int": 11,
+      "wis": 16,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 6,
+      "skill_proficiencies": [
+        "athletics",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
+    },
+    {
+      "name": "Anakin Skywalker",
+      "race": "human",
+      "class": "warlock",
+      "level": 20,
+      "str": 13,
+      "dex": 9,
+      "con": 15,
+      "int": 14,
+      "wis": 11,
+      "cha": 16,
+      "background": "acolyte",
+      "proficiency": 6,
+      "skill_proficiencies": [
+        "arcana",
+        "deception",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
     }
   ]
 }

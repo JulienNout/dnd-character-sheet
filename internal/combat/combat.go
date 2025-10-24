@@ -1,6 +1,7 @@
 package combat
 
 import (
+	"fmt"
 	"modules/dndcharactersheet/internal/api"
 	characterModel "modules/dndcharactersheet/internal/character"
 )
@@ -14,7 +15,10 @@ func CalculateArmorClass(char *characterModel.Character, service *characterModel
 	if char.Armor != "" {
 		apiIndex := api.ToAPIIndex(char.Armor)
 		armor, err := api.GetArmor(apiIndex)
-		if err == nil && armor != nil {
+		if err != nil {
+			fmt.Printf("[DEBUG] Armor API error for '%s': %v\n", apiIndex, err)
+		}
+		if armor != nil {
 			baseAC = armor.ArmorClass.Base
 			if armor.ArmorClass.DexBonus {
 				baseAC += dexMod

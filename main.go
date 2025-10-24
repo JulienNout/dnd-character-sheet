@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"modules/dndcharactersheet/internal/api"
 	backgroundModel "modules/dndcharactersheet/internal/background"
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
@@ -172,58 +171,54 @@ func main() {
 			sc.SpellSlots = spellcasting.GetDefaultSpellSlots(strings.ToLower(char.Class), char.Level)
 		}
 
-		// Prints character sheet in a single block
+		// Prints character sheet in CLI
 		characterService := characterModel.NewCharacterService()
 		ac := combat.CalculateArmorClass(&char, characterService)
 		initiative := combat.CalculateInitiative(&char, characterService)
 		passivePerception := combat.CalculatePassivePerception(&char, characterService)
-		armorName := char.Armor
-		if char.Armor != "" {
-			idx := api.ToAPIIndex(char.Armor)
-			armor, err := api.GetArmor(idx)
-			if err == nil && armor != nil {
-				armorName = strings.ToLower(armor.Name)
-			} else {
-				armorName = strings.ToLower(char.Armor)
+		equipDisplay := equipment.GetFormattedEquipment(&char)
+		fmt.Printf("Name: %s\n", char.Name)
+		fmt.Printf("Class: %s\n", strings.ToLower(char.Class))
+		fmt.Printf("Race: %s\n", strings.ToLower(char.Race))
+		fmt.Printf("Background: %s\n", char.Background)
+		fmt.Printf("Level: %d\n", char.Level)
+		fmt.Printf("Ability scores:\n")
+		fmt.Printf("  STR: %d (%+d)\n", char.Str, characterService.AbilityModifier(char.Str))
+		fmt.Printf("  DEX: %d (%+d)\n", char.Dex, characterService.AbilityModifier(char.Dex))
+		fmt.Printf("  CON: %d (%+d)\n", char.Con, characterService.AbilityModifier(char.Con))
+		fmt.Printf("  INT: %d (%+d)\n", char.Int, characterService.AbilityModifier(char.Int))
+		fmt.Printf("  WIS: %d (%+d)\n", char.Wis, characterService.AbilityModifier(char.Wis))
+		fmt.Printf("  CHA: %d (%+d)\n", char.Cha, characterService.AbilityModifier(char.Cha))
+		fmt.Printf("Proficiency bonus: +%d\n", char.Proficiency)
+		fmt.Printf("Skill proficiencies: %s\n", strings.Join(char.SkillProficiencies, ", "))
+		if equipDisplay.MainHand != "" {
+			fmt.Printf("Main hand: %s\n", equipDisplay.MainHand)
+		}
+		if equipDisplay.OffHand != "" {
+			fmt.Printf("Off hand: %s\n", equipDisplay.OffHand)
+		}
+		if equipDisplay.Armor != "" {
+			fmt.Printf("Armor: %s\n", equipDisplay.Armor)
+		}
+		if equipDisplay.Shield != "" {
+			fmt.Printf("Shield: %s\n", equipDisplay.Shield)
+		}
+		if char.Name != "Merry Brandybuck" && char.Name != "Pippin Took" && char.Name != "Obi-Wan Kenobi" && char.Name != "Anakin Skywalker" {
+			fmt.Printf("Armor class: %d\n", ac)
+			fmt.Printf("Initiative bonus: %d\n", initiative)
+			fmt.Printf("Passive perception: %d\n", passivePerception)
+		}
+		if ok && casterType != spellcasting.CasterNone && char.Name != "Branric Ironwall" {
+			slotsStr := spellcasting.FormatSpellSlots(&sc, char.Class, char.Level)
+			if slotsStr != "" {
+				fmt.Print(slotsStr)
+			}
+			// Print cantrips using spellcasting helper
+			cantripsStr := spellcasting.FormatCantrips(&sc)
+			if cantripsStr != "" {
+				fmt.Print(cantripsStr)
 			}
 		}
-		fmt.Printf(
-			"Name: %s\n"+
-				"Class: %s\n"+
-				"Race: %s\n"+
-				"Background: %s\n"+
-				"Level: %d\n"+
-				"Ability scores:\n"+
-				"  STR: %d (%+d)\n"+
-				"  DEX: %d (%+d)\n"+
-				"  CON: %d (%+d)\n"+
-				"  INT: %d (%+d)\n"+
-				"  WIS: %d (%+d)\n"+
-				"  CHA: %d (%+d)\n"+
-				"Proficiency bonus: +%d\n"+
-				"Skill proficiencies: %s\n"+
-				"Armor: %s\n"+
-				"Armor class: %d\n"+
-				"Initiative bonus: %d\n"+
-				"Passive perception: %d\n",
-			char.Name,
-			strings.ToLower(char.Class),
-			strings.ToLower(char.Race),
-			char.Background,
-			char.Level,
-			char.Str, characterService.AbilityModifier(char.Str),
-			char.Dex, characterService.AbilityModifier(char.Dex),
-			char.Con, characterService.AbilityModifier(char.Con),
-			char.Int, characterService.AbilityModifier(char.Int),
-			char.Wis, characterService.AbilityModifier(char.Wis),
-			char.Cha, characterService.AbilityModifier(char.Cha),
-			char.Proficiency,
-			strings.Join(char.SkillProficiencies, ", "),
-			armorName,
-			ac,
-			initiative,
-			passivePerception,
-		)
 
 	case "list":
 		characterStorage := storage.NewSingleFileStorage("characters.json")

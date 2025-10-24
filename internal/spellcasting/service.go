@@ -2,10 +2,58 @@ package spellcasting
 
 import (
 	"encoding/csv"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 )
+
+// FormatCantrips returns a formatted string for cantrips (level 0 spells) from SpellSlots or KnownSpells
+func FormatCantrips(cs *CharacterSpellcasting) string {
+	if cs == nil {
+		return ""
+	}
+	// If cantrips are tracked in SpellSlots (level 0)
+	if slots, exists := cs.SpellSlots[0]; exists {
+		return fmt.Sprintf("Spell slots:\n  Level 0: %d\n", slots)
+	}
+	// If cantrips are tracked in KnownSpells
+	if len(cs.KnownSpells) > 0 {
+		var cantrips []string
+		for _, spellName := range cs.KnownSpells {
+			if strings.Contains(strings.ToLower(spellName), "cantrip") || strings.Contains(strings.ToLower(spellName), "level 0") {
+				cantrips = append(cantrips, spellName)
+			}
+		}
+		if len(cantrips) > 0 {
+			return fmt.Sprintf("Cantrips: %s\n", strings.Join(cantrips, ", "))
+		}
+	}
+	return ""
+}
+
+// Returns a formatted string for a character's spell slots
+func FormatSpellSlots(cs *CharacterSpellcasting, class string, level int) string {
+	if cs == nil {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("Spell slots:\n")
+	// Print cantrips as Level 0 using GetCantripsKnown if applicable
+	cantrips := GetCantripsKnown(class, level)
+	if cantrips > 0 {
+		sb.WriteString(fmt.Sprintf("  Level 0: %d\n", cantrips))
+	}
+	// Print actual spell slots (levels 1-9)
+	if cs.SpellSlots != nil {
+		for lvl := 1; lvl <= 9; lvl++ {
+			if slots, exists := cs.SpellSlots[lvl]; exists {
+				sb.WriteString(fmt.Sprintf("  Level %d: %d\n", lvl, slots))
+			}
+		}
+	}
+	return sb.String()
+}
 
 // Default spell slots by level
 func GetDefaultSpellSlots(class string, level int) map[int]int {

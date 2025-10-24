@@ -3,9 +3,72 @@ package equipment
 import (
 	"encoding/csv"
 	"fmt"
+	"modules/dndcharactersheet/internal/api"
+	characterModel "modules/dndcharactersheet/internal/character"
 	"os"
 	"strings"
 )
+
+type EquipmentDisplay struct {
+	MainHand string
+	OffHand  string
+	Armor    string
+	Shield   string
+}
+
+// GetFormattedEquipment returns formatted equipment strings for a character, enriched via API
+func GetFormattedEquipment(char *characterModel.Character) EquipmentDisplay {
+	var disp EquipmentDisplay
+	// Main hand
+	if char.MainHand != "" {
+		idx := api.ToAPIIndex(char.MainHand)
+		weapon, err := api.GetWeapon(idx)
+		var mainHandName string
+		if err == nil && weapon != nil {
+			mainHandName = strings.ToLower(weapon.Name)
+		} else {
+			mainHandName = strings.ToLower(char.MainHand)
+		}
+		disp.MainHand = mainHandName
+	}
+	// Off hand
+	if char.OffHand != "" {
+		idx := api.ToAPIIndex(char.OffHand)
+		weapon, err := api.GetWeapon(idx)
+		var offHandName string
+		if err == nil && weapon != nil {
+			offHandName = strings.ToLower(weapon.Name)
+		} else {
+			offHandName = strings.ToLower(char.OffHand)
+		}
+		disp.OffHand = offHandName
+	}
+	// Armor
+	if char.Armor != "" {
+		idx := api.ToAPIIndex(char.Armor)
+		armor, err := api.GetArmor(idx)
+		var armorName string
+		if err == nil && armor != nil {
+			armorName = strings.ToLower(armor.Name)
+		} else {
+			armorName = strings.ToLower(char.Armor)
+		}
+		disp.Armor = armorName
+	}
+
+	if char.Shield != "" {
+		idx := api.ToAPIIndex(char.Shield)
+		shield, err := api.GetArmor(idx)
+		var shieldName string
+		if err == nil && shield != nil {
+			shieldName = strings.ToLower(shield.Name)
+		} else {
+			shieldName = strings.ToLower(char.Shield)
+		}
+		disp.Shield = shieldName
+	}
+	return disp
+}
 
 func LoadEquipmentFromCSV(filename string) ([]EquipmentItem, error) {
 	file, err := os.Open(filename)
