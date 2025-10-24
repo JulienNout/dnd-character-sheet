@@ -1,22 +1,60 @@
 package combat
 
-// CalculateArmorClass returns the armor class for a character.
-// TODO: Implement logic based on equipped armor, shield, class, and ability scores.
-func CalculateArmorClass( /* character params */ ) int {
-	// Placeholder implementation
-	return 10
+import (
+	"modules/dndcharactersheet/internal/api"
+	characterModel "modules/dndcharactersheet/internal/character"
+)
+
+// CalculateArmorClass returns the armor class for a character using real-time API enrichment.
+func CalculateArmorClass(char *characterModel.Character, service *characterModel.CharacterService) int {
+	baseAC := 10
+	dexMod := service.AbilityModifier(char.Dex)
+
+	// Get armor AC from API if equipped
+	if char.Armor != "" {
+		apiIndex := api.ToAPIIndex(char.Armor)
+		armor, err := api.GetArmor(apiIndex)
+		if err == nil && armor != nil {
+			baseAC = armor.ArmorClass.Base
+			if armor.ArmorClass.DexBonus {
+				baseAC += dexMod
+			}
+		}
+	} else {
+		baseAC += dexMod
+	}
+
+	// Add shield bonus if equipped (assume +2 for D&D 5e shields)
+	if char.Shield != "" {
+		shield, err := api.GetArmor(char.Shield)
+		if err == nil && shield != nil {
+			// If shield AC is in API, use it, else default to +2
+			if shield.ArmorClass.Base > 2 {
+				baseAC += shield.ArmorClass.Base
+			} else {
+				baseAC += 2
+			}
+		} else {
+			baseAC += 2
+		}
+	}
+	return baseAC
 }
 
 // CalculateInitiative returns the initiative bonus for a character.
-// TODO: Implement logic based on Dexterity modifier and other bonuses.
-func CalculateInitiative( /* character params */ ) int {
-	// Placeholder implementation
-	return 0
+func CalculateInitiative(char *characterModel.Character, service *characterModel.CharacterService) int {
+	return service.AbilityModifier(char.Dex)
 }
 
 // CalculatePassivePerception returns the passive perception for a character.
-// TODO: Implement logic based on Wisdom modifier and proficiency.
-func CalculatePassivePerception( /* character params */ ) int {
-	// Placeholder implementation
-	return 10
+func CalculatePassivePerception(char *characterModel.Character, service *characterModel.CharacterService) int {
+	base := 10 + service.AbilityModifier(char.Wis)
+	// If proficient in Perception, add proficiency bonus
+	for _, skill := range char.SkillProficiencies {
+		if skill == "Perception" || skill == "perception" {
+			base += char.Proficiency
+			break
+		}
+	}
+	return base
 }

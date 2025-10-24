@@ -8,6 +8,7 @@ import (
 	backgroundModel "modules/dndcharactersheet/internal/background"
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
+	"modules/dndcharactersheet/internal/combat"
 	"modules/dndcharactersheet/internal/equipment"
 	"modules/dndcharactersheet/internal/spellcasting"
 	"modules/dndcharactersheet/internal/storage"
@@ -308,6 +309,14 @@ func main() {
 				}
 			}
 		}
+
+		// Combat stats
+		ac := combat.CalculateArmorClass(&char, characterService)
+		initiative := combat.CalculateInitiative(&char, characterService)
+		passivePerception := combat.CalculatePassivePerception(&char, characterService)
+		fmt.Printf("Armor class: %d\n", ac)
+		fmt.Printf("Initiative: %d\n", initiative)
+		fmt.Printf("Passive perception: %d\n", passivePerception)
 
 	case "list":
 		characterStorage := storage.NewSingleFileStorage("characters.json")
