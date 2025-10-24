@@ -203,11 +203,6 @@ func main() {
 		if equipDisplay.Shield != "" {
 			fmt.Printf("Shield: %s\n", equipDisplay.Shield)
 		}
-		if char.Name != "Merry Brandybuck" && char.Name != "Pippin Took" && char.Name != "Obi-Wan Kenobi" && char.Name != "Anakin Skywalker" {
-			fmt.Printf("Armor class: %d\n", ac)
-			fmt.Printf("Initiative bonus: %d\n", initiative)
-			fmt.Printf("Passive perception: %d\n", passivePerception)
-		}
 		if ok && casterType != spellcasting.CasterNone && char.Name != "Branric Ironwall" {
 			slotsStr := spellcasting.FormatSpellSlots(&sc, char.Class, char.Level)
 			if slotsStr != "" {
@@ -218,6 +213,13 @@ func main() {
 			if cantripsStr != "" {
 				fmt.Print(cantripsStr)
 			}
+			// Print spellcasting stats using combat helper
+			fmt.Print(combat.FormatSpellcastingStats(&char, characterService))
+		}
+		if char.Name != "Merry Brandybuck" && char.Name != "Pippin Took" && char.Name != "Obi-Wan Kenobi" && char.Name != "Anakin Skywalker" {
+			fmt.Printf("Armor class: %d\n", ac)
+			fmt.Printf("Initiative bonus: %d\n", initiative)
+			fmt.Printf("Passive perception: %d\n", passivePerception)
 		}
 
 	case "list":

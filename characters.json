@@ -267,6 +267,27 @@
       ],
       "armor": "chain shirt",
       "spellcasting": null
+    },
+    {
+      "name": "Qui-Gon Jinn",
+      "race": "human",
+      "class": "cleric",
+      "level": 10,
+      "str": 15,
+      "dex": 9,
+      "con": 11,
+      "int": 14,
+      "wis": 16,
+      "cha": 13,
+      "background": "acolyte",
+      "proficiency": 4,
+      "skill_proficiencies": [
+        "history",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
     }
   ]
 }
