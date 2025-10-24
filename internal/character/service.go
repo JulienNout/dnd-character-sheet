@@ -73,7 +73,7 @@ func (cs *CharacterService) ApplyRacialBonuses(character *Character) {
 		character.Cha += 2
 		character.Dex += 1
 		character.Con += 1
-	case "half-orc":
+	case "half orc":
 		character.Str += 2
 		character.Con += 1
 	case "tiefling":

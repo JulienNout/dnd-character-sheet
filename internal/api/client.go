@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-const BaseURL = "http://localhost:3000/api/2014"
+const BaseURL = "https://www.dnd5eapi.co/api/2014"
+
+// Local API from Docker image
+//const BaseURL = "http://localhost:3000/api/2014"
 
 // ToAPIIndex converts a spell or item name to the API index format (kebab-case)
 func ToAPIIndex(name string) string {
