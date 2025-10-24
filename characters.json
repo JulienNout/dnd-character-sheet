@@ -1,3 +1,139 @@
 {
-  "characters": []
+  "characters": [
+    {
+      "name": "Kaelen Swiftstep",
+      "race": "human",
+      "class": "rogue",
+      "level": 1,
+      "str": 11,
+      "dex": 16,
+      "con": 15,
+      "int": 13,
+      "wis": 14,
+      "cha": 9,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "armor": "leather armor",
+      "spellcasting": null
+    },
+    {
+      "name": "Thorga Stonehand",
+      "race": "hill dwarf",
+      "class": "fighter",
+      "level": 1,
+      "str": 15,
+      "dex": 12,
+      "con": 16,
+      "int": 8,
+      "wis": 14,
+      "cha": 10,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "animal handling",
+        "insight",
+        "religion"
+      ],
+      "armor": "scale mail",
+      "shield": "shield",
+      "spellcasting": null
+    },
+    {
+      "name": "Branric Ironwall",
+      "race": "human",
+      "class": "paladin",
+      "level": 1,
+      "str": 16,
+      "dex": 9,
+      "con": 15,
+      "int": 11,
+      "wis": 13,
+      "cha": 14,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "athletics",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "armor": "plate armor",
+      "shield": "shield",
+      "spellcasting": null
+    },
+    {
+      "name": "Ragna Wolfblood",
+      "race": "half orc",
+      "class": "barbarian",
+      "level": 1,
+      "str": 15,
+      "dex": 14,
+      "con": 13,
+      "int": 8,
+      "wis": 12,
+      "cha": 10,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "animal handling",
+        "athletics",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": null
+    },
+    {
+      "name": "Gorrak Bearhide",
+      "race": "human",
+      "class": "barbarian",
+      "level": 1,
+      "str": 16,
+      "dex": 14,
+      "con": 15,
+      "int": 9,
+      "wis": 13,
+      "cha": 11,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "animal handling",
+        "athletics",
+        "insight",
+        "religion"
+      ],
+      "shield": "shield",
+      "spellcasting": null
+    },
+    {
+      "name": "Brynja Axebreaker",
+      "race": "human",
+      "class": "barbarian",
+      "level": 1,
+      "str": 16,
+      "dex": 14,
+      "con": 15,
+      "int": 9,
+      "wis": 13,
+      "cha": 11,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "animal handling",
+        "athletics",
+        "insight",
+        "religion"
+      ],
+      "armor": "half plate armor",
+      "spellcasting": null
+    }
+  ]
 }

@@ -21,13 +21,13 @@
    - [x] Add max spell slots per level
    - [x] Anything else related to spells listed in the SRD we'll ignore
 
-4. [ ] Integrate external information → Manually tested by Loek once all automatic tests pass
+4. [x] Integrate external information → Manually tested by Loek once all automatic tests pass
    - [ ] Enrich spells and items from external API: https://www.dnd5eapi.co/. Use Go's built-in concurrency to send multiple requests at the same time.
      > PLEASE READ CAREFULLY: this is an API built and maintained by volunteers. They've rate-limited the API to 50 requests per second. Theoretically, you could gather all info on spells and equipment in about 7.5 seconds. But be nice to these people and don't run up their server costs. Send 5–10 requests per second at most, and only test with small batches (8 or 10 spells) instead of your whole database at a time. If it works for 10 spells, it will work for all 319. You can also download their Docker image to test with their API locally: https://github.com/5e-bits/5e-srd-api?tab=readme-ov-file#how-to-run
-   - [ ] Spells: school, range
-   - [ ] Weapons: category, range (normal range, ignore long range), two-handed
-   - [ ] Armor: armor class, dexterity bonus
-   - [ ] If you want to do more and build a fully fledged character sheet generator, feel free! We will only look at these properties for this course and exam.
+   - [x] Spells: school, range
+   - [x] Weapons: category, range (normal range, ignore long range), two-handed
+   - [x] Armor: armor class, dexterity bonus
+   - [x] If you want to do more and build a fully fledged character sheet generator, feel free! We will only look at these properties for this course and exam.
 
 5. [ ] Combat stat calculation
    - [ ] Armor class, initiative, passive perception (character sheet calls it "passive wisdom")
