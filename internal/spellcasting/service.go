@@ -7,6 +7,23 @@ import (
 	"strings"
 )
 
+// Default spell slots by level
+func GetDefaultSpellSlots(class string, level int) map[int]int {
+	class = strings.ToLower(class)
+	switch class {
+	case "wizard", "cleric", "druid":
+		return FullCasterSlots[level]
+	case "paladin", "ranger":
+		return HalfCasterSlots[level]
+	case "warlock":
+		return PactCasterSlots[level]
+	case "bard", "sorcerer":
+		return FullCasterSlots[level]
+	default:
+		return map[int]int{}
+	}
+}
+
 // LoadSpells loads spells from a CSV file
 func LoadSpells(filename string) ([]Spell, error) {
 	file, err := os.Open(filename)

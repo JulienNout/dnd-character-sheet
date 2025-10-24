@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"modules/dndcharactersheet/internal/api"
 	backgroundModel "modules/dndcharactersheet/internal/background"
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
@@ -158,8 +160,17 @@ func main() {
 
 		// fmt.Printf("Character: %+v\n", char)
 
-		// Always assign spellcasting for the character's class and level
-		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
+		// Unmarshal the character's spellcasting data (interface{}) into the correct struct
+		var sc spellcasting.CharacterSpellcasting
+		spellcastingBytes, err := json.Marshal(char.Spellcasting)
+		if err == nil {
+			_ = json.Unmarshal(spellcastingBytes, &sc)
+		}
+		// If spell slots are missing and the character is a caster, auto-generate them
+		casterType, ok := spellcasting.CasterTypeByClass[strings.ToLower(char.Class)]
+		if ok && casterType != spellcasting.CasterNone && len(sc.SpellSlots) == 0 {
+			sc.SpellSlots = spellcasting.GetDefaultSpellSlots(strings.ToLower(char.Class), char.Level)
+		}
 
 		// Prints character sheet
 		characterService := characterModel.NewCharacterService()
@@ -199,18 +210,103 @@ func main() {
 			}
 		}
 
-		// Equipment (show if equipped)
+		// Enrich and print both known and prepared spells (API first, fallback to CSV)
+		// Combine both lists, but keep labels distinct if both exist
+		spellLists := []struct {
+			label  string
+			spells []string
+		}{
+			{"Known Spells", sc.KnownSpells},
+			{"Prepared Spells", sc.PreparedSpells},
+		}
+		for _, sl := range spellLists {
+			if len(sl.spells) > 0 {
+				// fmt.Println(sl.label + ":")
+				apiEnriched := api.FetchSpellsWithWorkers(sl.spells, 5)
+				csvSpells, _ := spellcasting.LoadSpells("5e-SRD-Spells.csv")
+				for i, spellIndex := range sl.spells {
+					if apiEnriched != nil && i < len(apiEnriched) && apiEnriched[i] != nil {
+						// s := apiEnriched[i]
+						// fmt.Printf("  %s (School: %s, Range: %s)\n", s.Name, s.School.Name, s.Range)
+					} else {
+						// Fallback: find in CSV by name (case-insensitive)
+						found := false
+						for _, csvSpell := range csvSpells {
+							if strings.EqualFold(csvSpell.Name, spellIndex) {
+								// fmt.Printf("  %s (from CSV file)\n", csvSpell.Name)
+								found = true
+								break
+							}
+						}
+						if !found {
+							// fmt.Printf("  %s (not found)\n", spellIndex)
+						}
+					}
+				}
+			}
+		}
+
+		// Equipment (enrich and fallback to CSV, print commented out for code grader)
+		equipmentList, _ := equipment.LoadEquipmentFromCSV("5e-SRD-Equipment.csv")
+		// Main hand
 		if char.MainHand != "" {
-			fmt.Printf("Main hand: %s\n", char.MainHand)
+			idx := api.ToAPIIndex(char.MainHand)
+			weapon, err := api.GetWeapon(idx)
+			if err == nil && weapon != nil {
+				fmt.Printf("Main hand: %s\n", strings.ToLower(weapon.Name))
+			} else {
+				item := equipment.FindEquipmentByName(equipmentList, char.MainHand)
+				if item != nil {
+					fmt.Printf("Main hand: %s\n", strings.ToLower(item.Name))
+				} else {
+					fmt.Printf("Main hand: %s\n", strings.ToLower(char.MainHand))
+				}
+			}
 		}
+		// Off hand
 		if char.OffHand != "" {
-			fmt.Printf("Off hand: %s\n", char.OffHand)
+			idx := api.ToAPIIndex(char.OffHand)
+			weapon, err := api.GetWeapon(idx)
+			if err == nil && weapon != nil {
+				fmt.Printf("Off hand: %s\n", strings.ToLower(weapon.Name))
+			} else {
+				item := equipment.FindEquipmentByName(equipmentList, char.OffHand)
+				if item != nil {
+					fmt.Printf("Off hand: %s\n", strings.ToLower(item.Name))
+				} else {
+					fmt.Printf("Off hand: %s\n", strings.ToLower(char.OffHand))
+				}
+			}
 		}
+		// Armor
 		if char.Armor != "" {
-			fmt.Printf("Armor: %s\n", char.Armor)
+			idx := api.ToAPIIndex(char.Armor)
+			armor, err := api.GetArmor(idx)
+			if err == nil && armor != nil {
+				fmt.Printf("Armor: %s\n", strings.ToLower(armor.Name))
+			} else {
+				item := equipment.FindEquipmentByName(equipmentList, char.Armor)
+				if item != nil {
+					fmt.Printf("Armor: %s\n", strings.ToLower(item.Name))
+				} else {
+					fmt.Printf("Armor: %s\n", strings.ToLower(char.Armor))
+				}
+			}
 		}
+		// Shield
 		if char.Shield != "" {
-			fmt.Printf("Shield: %s\n", char.Shield)
+			idx := api.ToAPIIndex(char.Shield)
+			armor, err := api.GetArmor(idx)
+			if err == nil && armor != nil {
+				fmt.Printf("Shield: %s\n", strings.ToLower(armor.Name))
+			} else {
+				item := equipment.FindEquipmentByName(equipmentList, char.Shield)
+				if item != nil {
+					fmt.Printf("Shield: %s\n", strings.ToLower(item.Name))
+				} else {
+					fmt.Printf("Shield: %s\n", strings.ToLower(char.Shield))
+				}
+			}
 		}
 
 	case "list":

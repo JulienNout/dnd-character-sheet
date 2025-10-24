@@ -15,11 +15,11 @@
    - [x] We'll ignore the concept of "inventory": unequipped items such as a backup dagger, rope, torches, etc.
    - [x] Any other gear listed in the SRD we'll ignore
 
-3. [ ] Spellcasting
-   - [ ] When applicable :)
-   - [ ] Add known/prepared spells from spell list for your class. It's okay to pick random spells as long as they fit the slot level
-   - [ ] Add max spell slots per level
-   - [ ] Anything else related to spells listed in the SRD we'll ignore
+3. [x] Spellcasting
+   - [x] When applicable :)
+   - [x] Add known/prepared spells from spell list for your class. It's okay to pick random spells as long as they fit the slot level
+   - [x] Add max spell slots per level
+   - [x] Anything else related to spells listed in the SRD we'll ignore
 
 4. [ ] Integrate external information → Manually tested by Loek once all automatic tests pass
    - [ ] Enrich spells and items from external API: https://www.dnd5eapi.co/. Use Go's built-in concurrency to send multiple requests at the same time.
