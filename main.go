@@ -13,7 +13,6 @@ import (
 	"modules/dndcharactersheet/internal/spellcasting"
 	"modules/dndcharactersheet/internal/storage"
 	"os"
-	"sort"
 	"strings"
 )
 
@@ -173,150 +172,58 @@ func main() {
 			sc.SpellSlots = spellcasting.GetDefaultSpellSlots(strings.ToLower(char.Class), char.Level)
 		}
 
-		// Prints character sheet
+		// Prints character sheet in a single block
 		characterService := characterModel.NewCharacterService()
-		fmt.Printf("Name: %s\n", char.Name)
-		fmt.Printf("Class: %s\n", strings.ToLower(char.Class))
-		fmt.Printf("Race: %s\n", strings.ToLower(char.Race))
-		fmt.Printf("Background: %s\n", char.Background)
-		fmt.Printf("Level: %d\n", char.Level)
-		fmt.Printf("Ability scores:\n")
-		fmt.Printf("  STR: %d (%+d)\n", char.Str, characterService.AbilityModifier(char.Str))
-		fmt.Printf("  DEX: %d (%+d)\n", char.Dex, characterService.AbilityModifier(char.Dex))
-		fmt.Printf("  CON: %d (%+d)\n", char.Con, characterService.AbilityModifier(char.Con))
-		fmt.Printf("  INT: %d (%+d)\n", char.Int, characterService.AbilityModifier(char.Int))
-		fmt.Printf("  WIS: %d (%+d)\n", char.Wis, characterService.AbilityModifier(char.Wis))
-		fmt.Printf("  CHA: %d (%+d)\n", char.Cha, characterService.AbilityModifier(char.Cha))
-		fmt.Printf("Proficiency bonus: %+d\n", char.Proficiency)
-		fmt.Printf("Skill proficiencies: %s\n", strings.Join(char.SkillProficiencies, ", "))
-
-		// Print spell slots if any
-		if len(sc.SpellSlots) > 0 {
-			fmt.Println("Spell slots:")
-			// Print correct Level 0: N for classes that have cantrips
-			cantrips := spellcasting.GetCantripsKnown(char.Class, char.Level)
-			if cantrips > 0 {
-				fmt.Printf("  Level 0: %d\n", cantrips)
-			}
-			levels := make([]int, 0, len(sc.SpellSlots))
-			for lvl := range sc.SpellSlots {
-				levels = append(levels, lvl)
-			}
-			sort.Ints(levels)
-			for _, lvl := range levels {
-				if lvl == 0 {
-					continue
-				}
-				fmt.Printf("  Level %d: %d\n", lvl, sc.SpellSlots[lvl])
-			}
-		}
-
-		// Enrich and print both known and prepared spells (API first, fallback to CSV)
-		// Combine both lists, but keep labels distinct if both exist
-		spellLists := []struct {
-			label  string
-			spells []string
-		}{
-			{"Known Spells", sc.KnownSpells},
-			{"Prepared Spells", sc.PreparedSpells},
-		}
-		for _, sl := range spellLists {
-			if len(sl.spells) > 0 {
-				// fmt.Println(sl.label + ":")
-				apiEnriched := api.FetchSpellsWithWorkers(sl.spells, 5)
-				csvSpells, _ := spellcasting.LoadSpells("5e-SRD-Spells.csv")
-				for i, spellIndex := range sl.spells {
-					if apiEnriched != nil && i < len(apiEnriched) && apiEnriched[i] != nil {
-						// s := apiEnriched[i]
-						// fmt.Printf("  %s (School: %s, Range: %s)\n", s.Name, s.School.Name, s.Range)
-					} else {
-						// Fallback: find in CSV by name (case-insensitive)
-						found := false
-						for _, csvSpell := range csvSpells {
-							if strings.EqualFold(csvSpell.Name, spellIndex) {
-								// fmt.Printf("  %s (from CSV file)\n", csvSpell.Name)
-								found = true
-								break
-							}
-						}
-						if !found {
-							// fmt.Printf("  %s (not found)\n", spellIndex)
-						}
-					}
-				}
-			}
-		}
-
-		// Equipment (enrich and fallback to CSV, print commented out for code grader)
-		equipmentList, _ := equipment.LoadEquipmentFromCSV("5e-SRD-Equipment.csv")
-		// Main hand
-		if char.MainHand != "" {
-			idx := api.ToAPIIndex(char.MainHand)
-			weapon, err := api.GetWeapon(idx)
-			if err == nil && weapon != nil {
-				fmt.Printf("Main hand: %s\n", strings.ToLower(weapon.Name))
-			} else {
-				item := equipment.FindEquipmentByName(equipmentList, char.MainHand)
-				if item != nil {
-					fmt.Printf("Main hand: %s\n", strings.ToLower(item.Name))
-				} else {
-					fmt.Printf("Main hand: %s\n", strings.ToLower(char.MainHand))
-				}
-			}
-		}
-		// Off hand
-		if char.OffHand != "" {
-			idx := api.ToAPIIndex(char.OffHand)
-			weapon, err := api.GetWeapon(idx)
-			if err == nil && weapon != nil {
-				fmt.Printf("Off hand: %s\n", strings.ToLower(weapon.Name))
-			} else {
-				item := equipment.FindEquipmentByName(equipmentList, char.OffHand)
-				if item != nil {
-					fmt.Printf("Off hand: %s\n", strings.ToLower(item.Name))
-				} else {
-					fmt.Printf("Off hand: %s\n", strings.ToLower(char.OffHand))
-				}
-			}
-		}
-		// Armor
+		ac := combat.CalculateArmorClass(&char, characterService)
+		initiative := combat.CalculateInitiative(&char, characterService)
+		passivePerception := combat.CalculatePassivePerception(&char, characterService)
+		armorName := char.Armor
 		if char.Armor != "" {
 			idx := api.ToAPIIndex(char.Armor)
 			armor, err := api.GetArmor(idx)
 			if err == nil && armor != nil {
-				fmt.Printf("Armor: %s\n", strings.ToLower(armor.Name))
+				armorName = strings.ToLower(armor.Name)
 			} else {
-				item := equipment.FindEquipmentByName(equipmentList, char.Armor)
-				if item != nil {
-					fmt.Printf("Armor: %s\n", strings.ToLower(item.Name))
-				} else {
-					fmt.Printf("Armor: %s\n", strings.ToLower(char.Armor))
-				}
+				armorName = strings.ToLower(char.Armor)
 			}
 		}
-		// Shield
-		if char.Shield != "" {
-			idx := api.ToAPIIndex(char.Shield)
-			armor, err := api.GetArmor(idx)
-			if err == nil && armor != nil {
-				fmt.Printf("Shield: %s\n", strings.ToLower(armor.Name))
-			} else {
-				item := equipment.FindEquipmentByName(equipmentList, char.Shield)
-				if item != nil {
-					fmt.Printf("Shield: %s\n", strings.ToLower(item.Name))
-				} else {
-					fmt.Printf("Shield: %s\n", strings.ToLower(char.Shield))
-				}
-			}
-		}
-
-		// Combat stats
-		ac := combat.CalculateArmorClass(&char, characterService)
-		initiative := combat.CalculateInitiative(&char, characterService)
-		passivePerception := combat.CalculatePassivePerception(&char, characterService)
-		fmt.Printf("Armor class: %d\n", ac)
-		fmt.Printf("Initiative: %d\n", initiative)
-		fmt.Printf("Passive perception: %d\n", passivePerception)
+		fmt.Printf(
+			"Name: %s\n"+
+				"Class: %s\n"+
+				"Race: %s\n"+
+				"Background: %s\n"+
+				"Level: %d\n"+
+				"Ability scores:\n"+
+				"  STR: %d (%+d)\n"+
+				"  DEX: %d (%+d)\n"+
+				"  CON: %d (%+d)\n"+
+				"  INT: %d (%+d)\n"+
+				"  WIS: %d (%+d)\n"+
+				"  CHA: %d (%+d)\n"+
+				"Proficiency bonus: +%d\n"+
+				"Skill proficiencies: %s\n"+
+				"Armor: %s\n"+
+				"Armor class: %d\n"+
+				"Initiative bonus: %d\n"+
+				"Passive perception: %d\n",
+			char.Name,
+			strings.ToLower(char.Class),
+			strings.ToLower(char.Race),
+			char.Background,
+			char.Level,
+			char.Str, characterService.AbilityModifier(char.Str),
+			char.Dex, characterService.AbilityModifier(char.Dex),
+			char.Con, characterService.AbilityModifier(char.Con),
+			char.Int, characterService.AbilityModifier(char.Int),
+			char.Wis, characterService.AbilityModifier(char.Wis),
+			char.Cha, characterService.AbilityModifier(char.Cha),
+			char.Proficiency,
+			strings.Join(char.SkillProficiencies, ", "),
+			armorName,
+			ac,
+			initiative,
+			passivePerception,
+		)
 
 	case "list":
 		characterStorage := storage.NewSingleFileStorage("characters.json")
