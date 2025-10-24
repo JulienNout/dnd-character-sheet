@@ -1,7 +1,6 @@
 package combat
 
 import (
-	"fmt"
 	"modules/dndcharactersheet/internal/api"
 	characterModel "modules/dndcharactersheet/internal/character"
 	"strings"
@@ -44,15 +43,15 @@ func CalculateArmorClass(char *characterModel.Character, service *characterModel
 			case "studded-leather":
 				baseAC = 12 + dexMod
 			case "hide-armor":
-				baseAC = 12 + min(dexMod,2)
+				baseAC = 12 + min(dexMod, 2)
 			case "chain-shirt":
-				baseAC = 13 + min(dexMod,2)
+				baseAC = 13 + min(dexMod, 2)
 			case "scale-mail":
-				baseAC = 14 + min(dexMod,2)
+				baseAC = 14 + min(dexMod, 2)
 			case "breastplate":
-				baseAC = 14 + min(dexMod,2)
+				baseAC = 14 + min(dexMod, 2)
 			case "half-plate":
-				baseAC = 15 + min(dexMod,2)
+				baseAC = 15 + min(dexMod, 2)
 			case "ring-mail":
 				baseAC = 14
 			case "chain-mail":
@@ -68,14 +67,6 @@ func CalculateArmorClass(char *characterModel.Character, service *characterModel
 	} else {
 		baseAC += dexMod
 	}
-
-// min returns the smaller of two ints
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 	// Add shield bonus if equipped (assume +2 for D&D 5e shields)
 	if char.Shield != "" {
