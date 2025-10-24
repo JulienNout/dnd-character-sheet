@@ -25,22 +25,57 @@ func CalculateArmorClass(char *characterModel.Character, service *characterModel
 	baseAC := 10
 	dexMod := service.AbilityModifier(char.Dex)
 
-	// Get armor AC from API if equipped
+	// Get armor AC from API if equipped, fallback to hardcoded values if API fails
 	if char.Armor != "" {
 		apiIndex := api.ToAPIIndex(char.Armor)
 		armor, err := api.GetArmor(apiIndex)
-		if err != nil {
-			fmt.Printf("[DEBUG] Armor API error for '%s': %v\n", apiIndex, err)
-		}
-		if armor != nil {
+		if err == nil && armor != nil {
 			baseAC = armor.ArmorClass.Base
 			if armor.ArmorClass.DexBonus {
+				baseAC += dexMod
+			}
+		} else {
+			// Fallback: hardcoded AC values for common armor
+			switch apiIndex {
+			case "padded":
+				baseAC = 11 + dexMod
+			case "leather-armor":
+				baseAC = 11 + dexMod
+			case "studded-leather":
+				baseAC = 12 + dexMod
+			case "hide-armor":
+				baseAC = 12 + min(dexMod,2)
+			case "chain-shirt":
+				baseAC = 13 + min(dexMod,2)
+			case "scale-mail":
+				baseAC = 14 + min(dexMod,2)
+			case "breastplate":
+				baseAC = 14 + min(dexMod,2)
+			case "half-plate":
+				baseAC = 15 + min(dexMod,2)
+			case "ring-mail":
+				baseAC = 14
+			case "chain-mail":
+				baseAC = 16
+			case "splint":
+				baseAC = 17
+			case "plate-armor":
+				baseAC = 18
+			default:
 				baseAC += dexMod
 			}
 		}
 	} else {
 		baseAC += dexMod
 	}
+
+// min returns the smaller of two ints
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 	// Add shield bonus if equipped (assume +2 for D&D 5e shields)
 	if char.Shield != "" {
@@ -75,4 +110,12 @@ func CalculatePassivePerception(char *characterModel.Character, service *charact
 		}
 	}
 	return base
+}
+
+// min returns the smaller of two ints
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
