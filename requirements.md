@@ -29,10 +29,10 @@
    - [x] Armor: armor class, dexterity bonus
    - [x] If you want to do more and build a fully fledged character sheet generator, feel free! We will only look at these properties for this course and exam.
 
-5. [ ] Combat stat calculation
-   - [ ] Armor class, initiative, passive perception (character sheet calls it "passive wisdom")
-   - [ ] Spell casting: spellcasting ability, spell save DC, spell attack bonus
+5. [x] Combat stat calculation
+   - [x] Armor class, initiative, passive perception (character sheet calls it "passive wisdom")
+   - [x] Spell casting: spellcasting ability, spell save DC, spell attack bonus
 
-6. [ ] User interfaces
-   - [ ] CLI: create a character, view it and list all characters
+6. [x] User interfaces
+   - [x] CLI: create a character, view it and list all characters
    - [ ] HTML frontend: a list of all characters that links to their character sheets (HTML template provided on Learn)

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D&D 5e Character List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>D&D 5e Characters</h1>
+    <ul id="character-list">
+        <!-- Character links will be inserted here by JavaScript -->
+    </ul>
+    <script>
+    // Load characters from characters.json and display them as links
+    fetch('../characters.json')
+      .then(response => response.json())
+      .then(data => {
+        const characters = data.characters || data;
+        const list = document.getElementById('character-list');
+        characters.forEach(character => {
+          const li = document.createElement('li');
+          // Link to character sheet, passing name as query param
+          li.innerHTML = `<a href="charactersheet.html?name=${encodeURIComponent(character.name)}">${character.name}</a>`;
+          list.appendChild(li);
+        });
+      });
+    </script>
+</body>
+</html>

@@ -19,4 +19,15 @@ type Character struct {
 	Armor              string      `json:"armor,omitempty"`
 	Shield             string      `json:"shield,omitempty"`
 	Spellcasting       interface{} `json:"spellcasting"` // Spellcasting data handled in service logic
+	// Data for frontend display
+	StrMod            int `json:"str_mod"`
+	DexMod            int `json:"dex_mod"`
+	ConMod            int `json:"con_mod"`
+	IntMod            int `json:"int_mod"`
+	WisMod            int `json:"wis_mod"`
+	ChaMod            int `json:"cha_mod"`
+	ArmorClass        int `json:"armor_class"`
+	Initiative        int `json:"initiative"`
+	PassivePerception int `json:"passive_perception"`
+	SpellAttackBonus  int `json:"spell_attack_bonus,omitempty"`
 }
