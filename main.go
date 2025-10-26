@@ -129,6 +129,22 @@ func main() {
 		// Apply racial ability score bonuses
 		characterService.ApplyRacialBonuses(&char)
 
+		// Set ability modifiers based on final ability scores
+		char.StrMod = characterService.AbilityModifier(char.Str)
+		char.DexMod = characterService.AbilityModifier(char.Dex)
+		char.ConMod = characterService.AbilityModifier(char.Con)
+		char.IntMod = characterService.AbilityModifier(char.Int)
+		char.WisMod = characterService.AbilityModifier(char.Wis)
+		char.ChaMod = characterService.AbilityModifier(char.Cha)
+		// Set armor class, initiative, and passive perception using backend calculation
+		char.ArmorClass = combat.CalculateArmorClass(&char, characterService)
+		char.Initiative = combat.CalculateInitiative(&char, characterService)
+		char.PassivePerception = combat.CalculatePassivePerception(&char, characterService)
+
+		// Set spell attack bonus if applicable
+		spellStats := combat.CalculateSpellcastingStats(&char, characterService)
+		char.SpellAttackBonus = spellStats.SpellAttackBonus
+
 		// Save character using single file storage
 		characterStorage := storage.NewSingleFileStorage("characters.json")
 		err = characterStorage.Save(char)
@@ -221,6 +237,10 @@ func main() {
 			fmt.Printf("Initiative bonus: %d\n", initiative)
 			fmt.Printf("Passive perception: %d\n", passivePerception)
 		}
+
+		// Set spell attack bonus for frontend
+		spellStats := combat.CalculateSpellcastingStats(&char, characterService)
+		char.SpellAttackBonus = spellStats.SpellAttackBonus
 
 	case "list":
 		characterStorage := storage.NewSingleFileStorage("characters.json")
@@ -361,6 +381,11 @@ func main() {
 				os.Exit(1)
 			}
 			char.Armor = strings.ToLower(item.Name)
+			// Recalculate armor class, initiative, and passive perception
+			characterService := characterModel.NewCharacterService()
+			char.ArmorClass = combat.CalculateArmorClass(&char, characterService)
+			char.Initiative = combat.CalculateInitiative(&char, characterService)
+			char.PassivePerception = combat.CalculatePassivePerception(&char, characterService)
 			err = characterStorage.Save(char)
 			if err != nil {
 				fmt.Printf("error saving character: %v\n", err)
@@ -382,6 +407,11 @@ func main() {
 				os.Exit(1)
 			}
 			char.Shield = strings.ToLower(item.Name)
+			// Recalculate armor class, initiative, and passive perception
+			characterService := characterModel.NewCharacterService()
+			char.ArmorClass = combat.CalculateArmorClass(&char, characterService)
+			char.Initiative = combat.CalculateInitiative(&char, characterService)
+			char.PassivePerception = combat.CalculatePassivePerception(&char, characterService)
 			err = characterStorage.Save(char)
 			if err != nil {
 				fmt.Printf("error saving character: %v\n", err)

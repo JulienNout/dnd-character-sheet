@@ -1,3 +1,147 @@
+</form>
+<script>
+// Helper to get query parameter
+function getQueryParam(param) {
+	const urlParams = new URLSearchParams(window.location.search);
+	return urlParams.get(param);
+}
+
+// Fill form fields with character data
+function fillCharacterSheet(character) {
+	document.querySelector('[name="charname"]').value = character.name || '';
+	document.querySelector('[name="classlevel"]').value = (character.class || '') + ' ' + (character.level || '');
+	document.querySelector('[name="background"]').value = character.background || '';
+	document.querySelector('[name="race"]').value = character.race || '';
+	document.querySelector('[name="alignment"]').value = character.alignment || '';
+	document.querySelector('[name="experiencepoints"]').value = character.experience || '';
+	document.querySelector('[name="Strengthscore"]').value = character.str || '';
+	document.querySelector('[name="Dexterityscore"]').value = character.dex || '';
+	document.querySelector('[name="Constitutionscore"]').value = character.con || '';
+	document.querySelector('[name="Wisdomscore"]').value = character.wis || '';
+	document.querySelector('[name="Intelligencescore"]').value = character.int || '';
+	document.querySelector('[name="Charismascore"]').value = character.cha || '';
+	document.querySelector('[name="proficiencybonus"]').value = character.proficiency || '';
+	// Modifiers
+	if (character.str_mod !== undefined) document.querySelector('[name="Strengthmod"]').value = (character.str_mod >= 0 ? "+" : "") + character.str_mod;
+	if (character.dex_mod !== undefined) document.querySelector('[name="Dexteritymod"]').value = (character.dex_mod >= 0 ? "+" : "") + character.dex_mod;
+	if (character.con_mod !== undefined) document.querySelector('[name="Constitutionmod"]').value = (character.con_mod >= 0 ? "+" : "") + character.con_mod;
+	if (character.int_mod !== undefined) document.querySelector('[name="Intelligencemod"]').value = (character.int_mod >= 0 ? "+" : "") + character.int_mod;
+	if (character.wis_mod !== undefined) document.querySelector('[name="Wisdommod"]').value = (character.wis_mod >= 0 ? "+" : "") + character.wis_mod;
+	if (character.cha_mod !== undefined) document.querySelector('[name="Charismamod"]').value = (character.cha_mod >= 0 ? "+" : "") + character.cha_mod;
+		// backend-calculated Armor Class
+		if (character.armor_class !== undefined) {
+			document.querySelector('[name="ac"]').value = character.armor_class;
+		}
+		// backend-calculated Initiative
+		if (character.initiative !== undefined) {
+			let val = character.initiative;
+			document.querySelector('[name="initiative"]').value = (val >= 0 ? "+" : "") + val;
+		}
+        // backend-calculated Passive Perception
+	    if (character.passive_perception !== undefined) {
+		document.querySelector('[name="passiveperception"]').value = character.passive_perception;
+	    }
+
+		// Show equipped items in equipment textarea
+		let equipped = [];
+		if (character.main_hand) equipped.push(`Main hand: ${character.main_hand}`);
+		if (character.off_hand) equipped.push(`Off hand: ${character.off_hand}`);
+		if (character.armor) equipped.push(`Armor: ${character.armor}`);
+		if (character.shield) equipped.push(`Shield: ${character.shield}`);
+		// Find the equipment textarea (the one with placeholder 'Equipment list here')
+		const eqTextarea = Array.from(document.querySelectorAll('textarea')).find(t => t.placeholder === 'Equipment list here');
+		if (eqTextarea) eqTextarea.value = equipped.join('\n');
+
+    	// Fill skill proficiencies
+	if (Array.isArray(character.skill_proficiencies)) {
+		const skillMap = {
+			"acrobatics": "Acrobatics-prof",
+			"animal handling": "Animal Handling-prof",
+			"arcana": "Arcana-prof",
+			"athletics": "Athletics-prof",
+			"deception": "Deception-prof",
+			"history": "History-prof",
+			"insight": "Insight-prof",
+			"intimidation": "Intimidation-prof",
+			"investigation": "Investigation-prof",
+			"medicine": "Medicine-prof",
+			"nature": "Nature-prof",
+			"perception": "Perception-prof",
+			"performance": "Performance-prof",
+			"persuasion": "Persuasion-prof",
+			"religion": "Religion-prof",
+			"sleight of hand": "Sleight of Hand-prof",
+			"stealth": "Stealth-prof",
+			"survival": "Survival-prof"
+		};
+		character.skill_proficiencies.forEach(skill => {
+			const key = skill.toLowerCase();
+			if (skillMap[key]) {
+				const cb = document.querySelector(`[name='${skillMap[key]}']`);
+				if (cb) cb.checked = true;
+			}
+		});
+	}
+
+	// Fill Attacks & Spellcasting section fields
+	// Find the name and attack bonus fields in the Attacks & Spellcasting section
+	const atkSection = document.querySelector('section.attacksandspellcasting');
+	if (atkSection) {
+		// Find all three rows (usually 3 attacks)
+		const nameInputs = atkSection.querySelectorAll('input[name^="atkname"]');
+		const bonusInputs = atkSection.querySelectorAll('input[name^="atkbonus"]');
+		// Get spells (support both Go and JS field names)
+		let spellName = '';
+		if (character.spellcasting) {
+			const sc = character.spellcasting;
+			const known = sc.KnownSpells || sc.known_spells || [];
+			const prepared = sc.PreparedSpells || sc.prepared_spells || [];
+			const spells = known.concat(prepared);
+			if (spells.length > 0) {
+				spellName = spells[0];
+			}
+		}
+		// Fill the first row with the spell name and attack bonus if present
+		if (nameInputs.length > 0 && spellName) {
+			nameInputs[0].value = spellName;
+		}
+		// Support both camelCase and snake_case for spell attack bonus
+		let spellAtkBonus = character.spellAttackBonus;
+		if (spellAtkBonus === undefined && character.spell_attack_bonus !== undefined) {
+			spellAtkBonus = character.spell_attack_bonus;
+		}
+		if (bonusInputs.length > 0 && spellAtkBonus !== undefined && spellAtkBonus !== null) {
+			bonusInputs[0].value = "+" + spellAtkBonus;
+		}
+	}
+	// Optionally, clear the textarea or just show attacks (not spells)
+	// If you want to keep attacks in the textarea, you can keep this logic:
+	let attacksText = "";
+	if (character.attacks && character.attacks.length > 0) {
+		attacksText += character.attacks.map(a => `${a.name} (${a.type}): +${a.attackBonus} to hit, ${a.damage}`).join("\n");
+	}
+	const spellTextarea = Array.from(document.querySelectorAll('section.attacksandspellcasting textarea')).find(t => !t.placeholder);
+	if (spellTextarea) {
+		spellTextarea.value = attacksText;
+	}
+}
+
+// Main logic
+const charName = getQueryParam('name');
+if (charName) {
+	fetch('../characters.json')
+		.then(response => response.json())
+		.then(data => {
+			const characters = data.characters || data;
+			const character = characters.find(c => c.name === charName);
+			if (character) {
+				fillCharacterSheet(character);
+			} else {
+				alert('Character not found: ' + charName);
+			}
+		});
+}
+</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
