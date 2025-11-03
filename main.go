@@ -10,9 +10,7 @@ import (
 	backgroundModel "modules/dndcharactersheet/internal/background"
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
-	"modules/dndcharactersheet/internal/combat"
 	domainChar "modules/dndcharactersheet/internal/domain/character"
-	"modules/dndcharactersheet/internal/equipment"
 	"modules/dndcharactersheet/internal/spellcasting"
 	"os"
 	"strings"
@@ -133,43 +131,12 @@ func main() {
 		char.ComputeModifiers()
 		char.ComputeDerived()
 
-		// For now, use legacy combat calculations (can be refactored later)
-		// Convert to legacy model temporarily for combat calcs
-		legacyChar := characterModel.Character{
-			Name:               char.Name,
-			Race:               char.Race,
-			Class:              char.Class,
-			Level:              char.Level,
-			Str:                char.Str,
-			Dex:                char.Dex,
-			Con:                char.Con,
-			Int:                char.Int,
-			Wis:                char.Wis,
-			Cha:                char.Cha,
-			Background:         char.Background,
-			Proficiency:        char.Proficiency,
-			SkillProficiencies: char.SkillProficiencies,
-			MainHand:           char.MainHand,
-			OffHand:            char.OffHand,
-			Armor:              char.Armor,
-			Shield:             char.Shield,
-			StrMod:             char.StrMod,
-			DexMod:             char.DexMod,
-			ConMod:             char.ConMod,
-			IntMod:             char.IntMod,
-			WisMod:             char.WisMod,
-			ChaMod:             char.ChaMod,
-		}
-		legacyService := characterModel.NewCharacterService()
-		char.ArmorClass = combat.CalculateArmorClass(&legacyChar, legacyService)
-		char.Initiative = combat.CalculateInitiative(&legacyChar, legacyService)
-		char.PassivePerception = combat.CalculatePassivePerception(&legacyChar, legacyService)
-		spellStats := combat.CalculateSpellcastingStats(&legacyChar, legacyService)
-		char.SpellAttackBonus = spellStats.SpellAttackBonus
-
 		// Save character using application service
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		svc := application.NewCharacterService(repo)
+		// Optionally recalc derived using API enrichers if available
+		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		svc.WithEnrichers(api, api, api).RecalculateDerived(&char)
 		err = svc.Create(&char)
 		if err != nil {
 			fmt.Printf("%v\n", err)
@@ -197,86 +164,51 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Convert domain character to legacy for display logic
-		char := characterModel.Character{
-			Name:               domainCharPtr.Name,
-			Race:               domainCharPtr.Race,
-			Class:              domainCharPtr.Class,
-			Level:              domainCharPtr.Level,
-			Str:                domainCharPtr.Str,
-			Dex:                domainCharPtr.Dex,
-			Con:                domainCharPtr.Con,
-			Int:                domainCharPtr.Int,
-			Wis:                domainCharPtr.Wis,
-			Cha:                domainCharPtr.Cha,
-			Background:         domainCharPtr.Background,
-			Proficiency:        domainCharPtr.Proficiency,
-			SkillProficiencies: domainCharPtr.SkillProficiencies,
-			MainHand:           domainCharPtr.MainHand,
-			OffHand:            domainCharPtr.OffHand,
-			Armor:              domainCharPtr.Armor,
-			Shield:             domainCharPtr.Shield,
-			Spellcasting:       domainCharPtr.Spellcasting,
-			StrMod:             domainCharPtr.StrMod,
-			DexMod:             domainCharPtr.DexMod,
-			ConMod:             domainCharPtr.ConMod,
-			IntMod:             domainCharPtr.IntMod,
-			WisMod:             domainCharPtr.WisMod,
-			ChaMod:             domainCharPtr.ChaMod,
-			ArmorClass:         domainCharPtr.ArmorClass,
-			Initiative:         domainCharPtr.Initiative,
-			PassivePerception:  domainCharPtr.PassivePerception,
-			SpellAttackBonus:   domainCharPtr.SpellAttackBonus,
-		}
-
-		// fmt.Printf("Character: %+v\n", char)
+		// Ensure derived stats are up to date using service + API
+		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		application.NewCharacterService(repo).WithEnrichers(api, api, api).RecalculateDerived(domainCharPtr)
 
 		// Unmarshal the character's spellcasting data (interface{}) into the correct struct
 		var sc spellcasting.CharacterSpellcasting
-		spellcastingBytes, err := json.Marshal(char.Spellcasting)
+		spellcastingBytes, err := json.Marshal(domainCharPtr.Spellcasting)
 		if err == nil {
 			_ = json.Unmarshal(spellcastingBytes, &sc)
 		}
 		// If spell slots are missing and the character is a caster, auto-generate them
-		casterType, ok := spellcasting.CasterTypeByClass[strings.ToLower(char.Class)]
+		casterType, ok := spellcasting.CasterTypeByClass[strings.ToLower(domainCharPtr.Class)]
 		if ok && casterType != spellcasting.CasterNone && len(sc.SpellSlots) == 0 {
-			sc.SpellSlots = spellcasting.GetDefaultSpellSlots(strings.ToLower(char.Class), char.Level)
+			sc.SpellSlots = spellcasting.GetDefaultSpellSlots(strings.ToLower(domainCharPtr.Class), domainCharPtr.Level)
 		}
 
-		// Prints character sheet in CLI
-		characterService := characterModel.NewCharacterService()
-		ac := combat.CalculateArmorClass(&char, characterService)
-		initiative := combat.CalculateInitiative(&char, characterService)
-		passivePerception := combat.CalculatePassivePerception(&char, characterService)
-		equipDisplay := equipment.GetFormattedEquipment(&char)
-		fmt.Printf("Name: %s\n", char.Name)
-		fmt.Printf("Class: %s\n", strings.ToLower(char.Class))
-		fmt.Printf("Race: %s\n", strings.ToLower(char.Race))
-		fmt.Printf("Background: %s\n", char.Background)
-		fmt.Printf("Level: %d\n", char.Level)
+		// Prints character sheet in CLI using domain values
+		fmt.Printf("Name: %s\n", domainCharPtr.Name)
+		fmt.Printf("Class: %s\n", strings.ToLower(domainCharPtr.Class))
+		fmt.Printf("Race: %s\n", strings.ToLower(domainCharPtr.Race))
+		fmt.Printf("Background: %s\n", domainCharPtr.Background)
+		fmt.Printf("Level: %d\n", domainCharPtr.Level)
 		fmt.Printf("Ability scores:\n")
-		fmt.Printf("  STR: %d (%+d)\n", char.Str, characterService.AbilityModifier(char.Str))
-		fmt.Printf("  DEX: %d (%+d)\n", char.Dex, characterService.AbilityModifier(char.Dex))
-		fmt.Printf("  CON: %d (%+d)\n", char.Con, characterService.AbilityModifier(char.Con))
-		fmt.Printf("  INT: %d (%+d)\n", char.Int, characterService.AbilityModifier(char.Int))
-		fmt.Printf("  WIS: %d (%+d)\n", char.Wis, characterService.AbilityModifier(char.Wis))
-		fmt.Printf("  CHA: %d (%+d)\n", char.Cha, characterService.AbilityModifier(char.Cha))
-		fmt.Printf("Proficiency bonus: +%d\n", char.Proficiency)
-		fmt.Printf("Skill proficiencies: %s\n", strings.Join(char.SkillProficiencies, ", "))
-		if equipDisplay.MainHand != "" {
-			fmt.Printf("Main hand: %s\n", equipDisplay.MainHand)
+		fmt.Printf("  STR: %d (%+d)\n", domainCharPtr.Str, domainCharPtr.StrMod)
+		fmt.Printf("  DEX: %d (%+d)\n", domainCharPtr.Dex, domainCharPtr.DexMod)
+		fmt.Printf("  CON: %d (%+d)\n", domainCharPtr.Con, domainCharPtr.ConMod)
+		fmt.Printf("  INT: %d (%+d)\n", domainCharPtr.Int, domainCharPtr.IntMod)
+		fmt.Printf("  WIS: %d (%+d)\n", domainCharPtr.Wis, domainCharPtr.WisMod)
+		fmt.Printf("  CHA: %d (%+d)\n", domainCharPtr.Cha, domainCharPtr.ChaMod)
+		fmt.Printf("Proficiency bonus: +%d\n", domainCharPtr.Proficiency)
+		fmt.Printf("Skill proficiencies: %s\n", strings.Join(domainCharPtr.SkillProficiencies, ", "))
+		if domainCharPtr.MainHand != "" {
+			fmt.Printf("Main hand: %s\n", domainCharPtr.MainHand)
 		}
-		if equipDisplay.OffHand != "" {
-			fmt.Printf("Off hand: %s\n", equipDisplay.OffHand)
+		if domainCharPtr.OffHand != "" {
+			fmt.Printf("Off hand: %s\n", domainCharPtr.OffHand)
 		}
-		if equipDisplay.Armor != "" {
-			fmt.Printf("Armor: %s\n", equipDisplay.Armor)
+		if domainCharPtr.Armor != "" {
+			fmt.Printf("Armor: %s\n", domainCharPtr.Armor)
 		}
-		if equipDisplay.Shield != "" {
-			fmt.Printf("Shield: %s\n", equipDisplay.Shield)
+		if domainCharPtr.Shield != "" {
+			fmt.Printf("Shield: %s\n", domainCharPtr.Shield)
 		}
-		if ok && casterType != spellcasting.CasterNone && char.Name != "Branric Ironwall" {
-			slotsStr := spellcasting.FormatSpellSlots(&sc, char.Class, char.Level)
+		if ok && casterType != spellcasting.CasterNone && domainCharPtr.Name != "Branric Ironwall" {
+			slotsStr := spellcasting.FormatSpellSlots(&sc, domainCharPtr.Class, domainCharPtr.Level)
 			if slotsStr != "" {
 				fmt.Print(slotsStr)
 			}
@@ -285,18 +217,15 @@ func main() {
 			if cantripsStr != "" {
 				fmt.Print(cantripsStr)
 			}
-			// Print spellcasting stats using combat helper
-			fmt.Print(combat.FormatSpellcastingStats(&char, characterService))
 		}
-		if char.Name != "Merry Brandybuck" && char.Name != "Pippin Took" && char.Name != "Obi-Wan Kenobi" && char.Name != "Anakin Skywalker" {
-			fmt.Printf("Armor class: %d\n", ac)
-			fmt.Printf("Initiative bonus: %d\n", initiative)
-			fmt.Printf("Passive perception: %d\n", passivePerception)
+		if domainCharPtr.Name != "Merry Brandybuck" && domainCharPtr.Name != "Pippin Took" && domainCharPtr.Name != "Obi-Wan Kenobi" && domainCharPtr.Name != "Anakin Skywalker" {
+			fmt.Printf("Armor class: %d\n", domainCharPtr.ArmorClass)
+			fmt.Printf("Initiative bonus: %d\n", domainCharPtr.Initiative)
+			fmt.Printf("Passive perception: %d\n", domainCharPtr.PassivePerception)
 		}
 
-		// Set spell attack bonus for frontend
-		spellStats := combat.CalculateSpellcastingStats(&char, characterService)
-		char.SpellAttackBonus = spellStats.SpellAttackBonus
+		// Pass spellcasting back to domain object (if modified)
+		domainCharPtr.Spellcasting = sc
 
 	case "list":
 		repo := storageAdapter.NewJSONRepository("characters.json")
@@ -424,19 +353,10 @@ func main() {
 				os.Exit(1)
 			}
 
-			// Recalculate derived stats after armor change
+			// Recalculate derived stats after armor change using service
 			char, _ = svc.Get(*name)
-			legacyChar := characterModel.Character{
-				Str: char.Str, Dex: char.Dex, Con: char.Con, Int: char.Int, Wis: char.Wis, Cha: char.Cha,
-				StrMod: char.StrMod, DexMod: char.DexMod, ConMod: char.ConMod,
-				IntMod: char.IntMod, WisMod: char.WisMod, ChaMod: char.ChaMod,
-				Armor: char.Armor, Shield: char.Shield,
-			}
-			legacyService := characterModel.NewCharacterService()
-			char.ArmorClass = combat.CalculateArmorClass(&legacyChar, legacyService)
-			char.Initiative = combat.CalculateInitiative(&legacyChar, legacyService)
-			char.PassivePerception = combat.CalculatePassivePerception(&legacyChar, legacyService)
-			svc.Create(char)
+			svc.RecalculateDerived(char)
+			_ = svc.Create(char)
 
 			fmt.Printf("Equipped armor %s\n", strings.ToLower(*armor))
 			return
@@ -455,19 +375,10 @@ func main() {
 				os.Exit(1)
 			}
 
-			// Recalculate derived stats after shield change
+			// Recalculate derived stats after shield change using service
 			char, _ = svc.Get(*name)
-			legacyChar := characterModel.Character{
-				Str: char.Str, Dex: char.Dex, Con: char.Con, Int: char.Int, Wis: char.Wis, Cha: char.Cha,
-				StrMod: char.StrMod, DexMod: char.DexMod, ConMod: char.ConMod,
-				IntMod: char.IntMod, WisMod: char.WisMod, ChaMod: char.ChaMod,
-				Armor: char.Armor, Shield: char.Shield,
-			}
-			legacyService := characterModel.NewCharacterService()
-			char.ArmorClass = combat.CalculateArmorClass(&legacyChar, legacyService)
-			char.Initiative = combat.CalculateInitiative(&legacyChar, legacyService)
-			char.PassivePerception = combat.CalculatePassivePerception(&legacyChar, legacyService)
-			svc.Create(char)
+			svc.RecalculateDerived(char)
+			_ = svc.Create(char)
 
 			fmt.Printf("Equipped shield %s\n", strings.ToLower(*shield))
 			return
