@@ -381,10 +381,11 @@ func main() {
 			os.Exit(2)
 		}
 
-		// Setup service with enrichers
+		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
+		spellEng := spellAdapter.NewEngineAdapter()
+		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
 
 		if _, err := svc.Get(*name); err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
