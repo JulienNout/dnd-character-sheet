@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	storageAdapter "modules/dndcharactersheet/internal/adapters/storage"
+	"modules/dndcharactersheet/internal/application"
 	backgroundModel "modules/dndcharactersheet/internal/background"
 	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
 	"modules/dndcharactersheet/internal/combat"
+	domainChar "modules/dndcharactersheet/internal/domain/character"
 	"modules/dndcharactersheet/internal/equipment"
 	"modules/dndcharactersheet/internal/spellcasting"
-	"modules/dndcharactersheet/internal/storage"
+	storage "modules/dndcharactersheet/internal/storage"
 	"os"
 	"strings"
 )
@@ -98,15 +101,13 @@ func main() {
 			}
 		}
 
-		// Creating character
-		characterService := characterModel.NewCharacterService()
-		profiencyBonus := characterService.GetProficiencyBonus(*level)
-
-		// Combine background skills, class skills, and user-specified skills
+		// Creating character using domain layer
+		builder := application.NewCharacterBuilder()
 		userSkills := strings.Split(*skills, ",")
-		combinedSkills := characterService.CombineSkillProficiencies(selectedBackground, selectedClass, userSkills)
+		combinedSkills := builder.CombineSkillProficiencies(selectedBackground, selectedClass, userSkills)
 
-		char := characterModel.Character{
+		// Build domain character
+		char := domainChar.Character{
 			Name:               *name,
 			Race:               *race,
 			Class:              *class,
@@ -118,7 +119,7 @@ func main() {
 			Wis:                *wis,
 			Cha:                *cha,
 			Background:         selectedBackground.Name,
-			Proficiency:        profiencyBonus,
+			Proficiency:        0, // Will be computed
 			SkillProficiencies: combinedSkills,
 			MainHand:           strings.ToLower(strings.TrimSpace(*mainhand)),
 			OffHand:            strings.ToLower(strings.TrimSpace(*offhand)),
@@ -126,28 +127,50 @@ func main() {
 			Shield:             strings.ToLower(strings.TrimSpace(*shieldFlag)),
 		}
 
-		// Apply racial ability score bonuses
-		characterService.ApplyRacialBonuses(&char)
+		// Apply domain business logic
+		char.ApplyRacialBonuses()
+		char.Proficiency = char.GetProficiencyBonus()
+		char.ComputeModifiers()
+		char.ComputeDerived()
 
-		// Set ability modifiers based on final ability scores
-		char.StrMod = characterService.AbilityModifier(char.Str)
-		char.DexMod = characterService.AbilityModifier(char.Dex)
-		char.ConMod = characterService.AbilityModifier(char.Con)
-		char.IntMod = characterService.AbilityModifier(char.Int)
-		char.WisMod = characterService.AbilityModifier(char.Wis)
-		char.ChaMod = characterService.AbilityModifier(char.Cha)
-		// Set armor class, initiative, and passive perception using backend calculation
-		char.ArmorClass = combat.CalculateArmorClass(&char, characterService)
-		char.Initiative = combat.CalculateInitiative(&char, characterService)
-		char.PassivePerception = combat.CalculatePassivePerception(&char, characterService)
-
-		// Set spell attack bonus if applicable
-		spellStats := combat.CalculateSpellcastingStats(&char, characterService)
+		// For now, use legacy combat calculations (can be refactored later)
+		// Convert to legacy model temporarily for combat calcs
+		legacyChar := characterModel.Character{
+			Name:               char.Name,
+			Race:               char.Race,
+			Class:              char.Class,
+			Level:              char.Level,
+			Str:                char.Str,
+			Dex:                char.Dex,
+			Con:                char.Con,
+			Int:                char.Int,
+			Wis:                char.Wis,
+			Cha:                char.Cha,
+			Background:         char.Background,
+			Proficiency:        char.Proficiency,
+			SkillProficiencies: char.SkillProficiencies,
+			MainHand:           char.MainHand,
+			OffHand:            char.OffHand,
+			Armor:              char.Armor,
+			Shield:             char.Shield,
+			StrMod:             char.StrMod,
+			DexMod:             char.DexMod,
+			ConMod:             char.ConMod,
+			IntMod:             char.IntMod,
+			WisMod:             char.WisMod,
+			ChaMod:             char.ChaMod,
+		}
+		legacyService := characterModel.NewCharacterService()
+		char.ArmorClass = combat.CalculateArmorClass(&legacyChar, legacyService)
+		char.Initiative = combat.CalculateInitiative(&legacyChar, legacyService)
+		char.PassivePerception = combat.CalculatePassivePerception(&legacyChar, legacyService)
+		spellStats := combat.CalculateSpellcastingStats(&legacyChar, legacyService)
 		char.SpellAttackBonus = spellStats.SpellAttackBonus
 
-		// Save character using single file storage
-		characterStorage := storage.NewSingleFileStorage("characters.json")
-		err = characterStorage.Save(char)
+		// Save character using application service
+		repo := storageAdapter.NewJSONRepository("characters.json")
+		svc := application.NewCharacterService(repo)
+		err = svc.Create(&char)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
@@ -272,18 +295,23 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Initialize single file storage
-		storage := storage.NewSingleFileStorage("characters.json")
+		// Use the new storage adapter which implements the repository port.
+		// We only need Delete by name here, so we can call the adapter directly
+		// without converting between storage/domain models.
+		repo := storageAdapter.NewJSONRepository("characters.json")
 
-		// Check if character exists before attempting to delete
-		_, err := storage.Load(*name)
+		// Check if character exists before attempting to delete by delegating to
+		// the underlying single-file storage via the existing storage package.
+		// We use the old storage loader for existence check to avoid mapping here.
+		rawStore := storage.NewSingleFileStorage("characters.json")
+		_, err := rawStore.Load(*name)
 		if err != nil {
 			fmt.Printf("Character '%s' not found\n", *name)
 			os.Exit(1)
 		}
 
-		// Delete the character
-		err = storage.Delete(*name)
+		// Delete via adapter (which delegates to the same backend)
+		err = repo.Delete(*name)
 		if err != nil {
 			fmt.Printf("Error deleting character: %v\n", err)
 			os.Exit(1)
