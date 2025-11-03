@@ -430,6 +430,94 @@
       "initiative": 1,
       "passive_perception": 11,
       "spell_attack_bonus": 1
+    },
+    {
+      "name": "Dwarf Rogue",
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 1,
+      "str": 10,
+      "dex": 15,
+      "con": 16,
+      "int": 12,
+      "wis": 11,
+      "cha": 8,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "insight",
+        "religion"
+      ],
+      "spellcasting": {
+        "CasterType": "none",
+        "KnownSpells": [],
+        "PreparedSpells": [],
+        "SpellSlots": {}
+      },
+      "racial_traits": [
+        "Dwarven Combat Training",
+        "Dwarven Resilience",
+        "Stonecunning",
+        "Darkvision"
+      ],
+      "str_mod": 0,
+      "dex_mod": 2,
+      "con_mod": 3,
+      "int_mod": 1,
+      "wis_mod": 0,
+      "cha_mod": -1,
+      "armor_class": 12,
+      "initiative": 2,
+      "passive_perception": 10,
+      "spell_attack_bonus": 3
+    },
+    {
+      "name": "Half-Orc Barbarian",
+      "race": "half-orc",
+      "class": "barbarian",
+      "level": 1,
+      "str": 18,
+      "dex": 14,
+      "con": 16,
+      "int": 8,
+      "wis": 12,
+      "cha": 10,
+      "background": "acolyte",
+      "proficiency": 2,
+      "skill_proficiencies": [
+        "animal handling",
+        "athletics",
+        "insight",
+        "intimidation",
+        "religion"
+      ],
+      "spellcasting": {
+        "CasterType": "none",
+        "KnownSpells": [],
+        "PreparedSpells": [],
+        "SpellSlots": {}
+      },
+      "racial_traits": [
+        "Relentless Endurance",
+        "Menacing",
+        "Darkvision",
+        "Savage Attacks"
+      ],
+      "str_mod": 4,
+      "dex_mod": 2,
+      "con_mod": 3,
+      "int_mod": -1,
+      "wis_mod": 1,
+      "cha_mod": 0,
+      "armor_class": 15,
+      "initiative": 2,
+      "passive_perception": 11,
+      "spell_attack_bonus": 1
     }
   ]
 }

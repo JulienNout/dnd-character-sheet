@@ -1,0 +1,663 @@
+diff --git a/internal/adapters/api/client_adapter.go b/internal/adapters/api/client_adapter.go
+index 52ac857..bc66a88 100644
+--- a/internal/adapters/api/client_adapter.go
++++ b/internal/adapters/api/client_adapter.go
+@@ -5,6 +5,7 @@ import (
+ 	"fmt"
+ 	"net/http"
+ 	"strings"
++	"sync"
+ 	"time"
+ 
+ 	"modules/dndcharactersheet/internal/ports"
+@@ -111,3 +112,227 @@ func (a *APIAdapter) GetSpell(name string) (*ports.SpellInfo, error) {
+ 		School: sp.School.Name,
+ 	}, nil
+ }
++
++// GetRacialSkillProficiencies fetches racial traits from the API and maps them to skill proficiencies.
++// It queries known SRD traits concurrently and returns matching skills for the given race.
++func (a *APIAdapter) GetRacialSkillProficiencies(race string) ([]string, error) {
++	rNorm := normalizeRace(race)
++
++	// Known SRD trait -> skill mappings
++	checks := []struct {
++		path  string
++		skill string
++	}{
++		{"traits/stonecunning", "history"},   // dwarves
++		{"traits/keen-senses", "perception"}, // elves
++		{"traits/menacing", "intimidation"},  // half-orcs
++	}
++
++	type result struct {
++		skill string
++		match bool
++	}
++
++	var (
++		wg      sync.WaitGroup
++		mu      sync.Mutex
++		results []string
++	)
++
++	wg.Add(len(checks))
++	for _, c := range checks {
++		c := c // capture range var
++		go func() {
++			defer wg.Done()
++			ok, err := a.raceHasTrait(rNorm, c.path)
++			if err != nil || !ok {
++				return
++			}
++			mu.Lock()
++			results = append(results, c.skill)
++			mu.Unlock()
++		}()
++	}
++	wg.Wait()
++
++	return results, nil
++}
++
++type traitResp struct {
++	Index string `json:"index"`
++	Races []struct {
++		Index string `json:"index"`
++		Name  string `json:"name"`
++	} `json:"races"`
++}
++
++func (a *APIAdapter) raceHasTrait(race string, traitPath string) (bool, error) {
++	url := fmt.Sprintf("%s/%s", a.baseURL, strings.TrimLeft(traitPath, "/"))
++	var tr traitResp
++	if err := a.fetchJSON(url, &tr); err != nil {
++		return false, err
++	}
++	for _, rr := range tr.Races {
++		if normalizeRace(rr.Index) == race || normalizeRace(rr.Name) == race {
++			return true, nil
++		}
++	}
++	return false, nil
++}
++
++func normalizeRace(v string) string {
++	s := strings.ToLower(strings.TrimSpace(v))
++	s = strings.ReplaceAll(s, "-", " ")
++	return s
++}
++
++// GetRacialTraits fetches trait descriptions from the API concurrently for a given race.
++func (a *APIAdapter) GetRacialTraits(race string) ([]*ports.TraitInfo, error) {
++	rNorm := normalizeRace(race)
++
++	// Known SRD traits that map to races
++	traitPaths := []string{
++		"traits/stonecunning",            // dwarf
++		"traits/darkvision",              // many races
++		"traits/dwarven-resilience",      // dwarf
++		"traits/dwarven-combat-training", // dwarf
++		"traits/keen-senses",             // elf
++		"traits/fey-ancestry",            // elf
++		"traits/trance",                  // elf
++		"traits/menacing",                // half-orc
++		"traits/relentless-endurance",    // half-orc
++		"traits/savage-attacks",          // half-orc
++		"traits/brave",                   // halfling
++		"traits/halfling-nimbleness",     // halfling
++		"traits/lucky",                   // halfling
++	}
++
++	type traitWithDesc struct {
++		Index string   `json:"index"`
++		Name  string   `json:"name"`
++		Desc  []string `json:"desc"`
++		Races []struct {
++			Index string `json:"index"`
++			Name  string `json:"name"`
++		} `json:"races"`
++	}
++
++	var (
++		wg     sync.WaitGroup
++		mu     sync.Mutex
++		traits []*ports.TraitInfo
++	)
++
++	wg.Add(len(traitPaths))
++	for _, path := range traitPaths {
++		path := path
++		go func() {
++			defer wg.Done()
++			url := fmt.Sprintf("%s/%s", a.baseURL, strings.TrimLeft(path, "/"))
++			var tr traitWithDesc
++			if err := a.fetchJSON(url, &tr); err != nil {
++				return
++			}
++			// Check if this trait belongs to the character's race
++			for _, rr := range tr.Races {
++				if normalizeRace(rr.Index) == rNorm || normalizeRace(rr.Name) == rNorm {
++					mu.Lock()
++					traits = append(traits, &ports.TraitInfo{
++						Index: tr.Index,
++						Name:  tr.Name,
++						Desc:  tr.Desc,
++					})
++					mu.Unlock()
++					break
++				}
++			}
++		}()
++	}
++	wg.Wait()
++
++	return traits, nil
++}
++
++// GetWeaponsBatch fetches multiple weapons concurrently with a simple rate limiter.
++func (a *APIAdapter) GetWeaponsBatch(names []string, maxPerSecond int) (map[string]*ports.WeaponInfo, error) {
++	if maxPerSecond <= 0 {
++		maxPerSecond = 5
++	}
++	res := make(map[string]*ports.WeaponInfo, len(names))
++	var mu sync.Mutex
++	var wg sync.WaitGroup
++	interval := time.Second / time.Duration(maxPerSecond)
++	ticker := time.NewTicker(interval)
++	defer ticker.Stop()
++	for _, n := range names {
++		name := n
++		<-ticker.C
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			if info, err := a.GetWeapon(name); err == nil {
++				mu.Lock()
++				res[name] = info
++				mu.Unlock()
++			}
++		}()
++	}
++	wg.Wait()
++	return res, nil
++}
++
++// GetArmorsBatch fetches multiple armors concurrently with a simple rate limiter.
++func (a *APIAdapter) GetArmorsBatch(names []string, maxPerSecond int) (map[string]*ports.ArmorInfo, error) {
++	if maxPerSecond <= 0 {
++		maxPerSecond = 5
++	}
++	res := make(map[string]*ports.ArmorInfo, len(names))
++	var mu sync.Mutex
++	var wg sync.WaitGroup
++	interval := time.Second / time.Duration(maxPerSecond)
++	ticker := time.NewTicker(interval)
++	defer ticker.Stop()
++	for _, n := range names {
++		name := n
++		<-ticker.C
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			if info, err := a.GetArmor(name); err == nil {
++				mu.Lock()
++				res[name] = info
++				mu.Unlock()
++			}
++		}()
++	}
++	wg.Wait()
++	return res, nil
++}
++
++// GetSpellsBatch fetches multiple spells concurrently with a simple rate limiter.
++func (a *APIAdapter) GetSpellsBatch(names []string, maxPerSecond int) (map[string]*ports.SpellInfo, error) {
++	if maxPerSecond <= 0 {
++		maxPerSecond = 5
++	}
++	res := make(map[string]*ports.SpellInfo, len(names))
++	var mu sync.Mutex
++	var wg sync.WaitGroup
++	interval := time.Second / time.Duration(maxPerSecond)
++	ticker := time.NewTicker(interval)
++	defer ticker.Stop()
++	for _, n := range names {
++		name := n
++		<-ticker.C
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			if info, err := a.GetSpell(name); err == nil {
++				mu.Lock()
++				res[name] = info
++				mu.Unlock()
++			}
++		}()
++	}
++	wg.Wait()
++	return res, nil
++}
+diff --git a/internal/adapters/storage/jsonstorage/model.go b/internal/adapters/storage/jsonstorage/model.go
+index d69a9bf..03e64a5 100644
+--- a/internal/adapters/storage/jsonstorage/model.go
++++ b/internal/adapters/storage/jsonstorage/model.go
+@@ -28,6 +28,7 @@ type Character struct {
+ 	Armor              string      `json:"armor,omitempty"`
+ 	Shield             string      `json:"shield,omitempty"`
+ 	Spellcasting       interface{} `json:"spellcasting"`
++	RacialTraits       []string    `json:"racial_traits,omitempty"`
+ 	StrMod             int         `json:"str_mod"`
+ 	DexMod             int         `json:"dex_mod"`
+ 	ConMod             int         `json:"con_mod"`
+diff --git a/internal/adapters/storage/repository.go b/internal/adapters/storage/repository.go
+index b9e809e..09374e0 100644
+--- a/internal/adapters/storage/repository.go
++++ b/internal/adapters/storage/repository.go
+@@ -88,6 +88,7 @@ func domainToStorage(d *characterpkg.Character) stor.Character {
+ 		Armor:              d.Armor,
+ 		Shield:             d.Shield,
+ 		Spellcasting:       marshalSpellcasting(d.Spellcasting),
++		RacialTraits:       d.RacialTraits,
+ 		StrMod:             d.StrMod,
+ 		DexMod:             d.DexMod,
+ 		ConMod:             d.ConMod,
+@@ -122,6 +123,7 @@ func storageToDomain(s *stor.Character) *characterpkg.Character {
+ 		Armor:              s.Armor,
+ 		Shield:             s.Shield,
+ 		Spellcasting:       unmarshalSpellcasting(s.Spellcasting),
++		RacialTraits:       s.RacialTraits,
+ 		StrMod:             s.StrMod,
+ 		DexMod:             s.DexMod,
+ 		ConMod:             s.ConMod,
+diff --git a/internal/application/character_builder.go b/internal/application/character_builder.go
+index a26dfa7..c2a486c 100644
+--- a/internal/application/character_builder.go
++++ b/internal/application/character_builder.go
+@@ -6,22 +6,27 @@ import (
+ 
+ 	backgroundModel "modules/dndcharactersheet/internal/domain/background"
+ 	classModel "modules/dndcharactersheet/internal/domain/class"
++	raceModel "modules/dndcharactersheet/internal/domain/race"
++	"modules/dndcharactersheet/internal/ports"
+ )
+ 
+ // CharacterBuilder provides helper functions for building characters.
+ // These functions coordinate multiple inputs (background, class, user choices)
+ // and don't belong in the domain entity itself.
+-type CharacterBuilder struct{}
++type CharacterBuilder struct {
++	raceEnricher ports.RaceEnricher
++}
+ 
+ // NewCharacterBuilder creates a new character builder.
+-func NewCharacterBuilder() *CharacterBuilder {
+-	return &CharacterBuilder{}
++func NewCharacterBuilder(raceEnricher ports.RaceEnricher) *CharacterBuilder {
++	return &CharacterBuilder{raceEnricher: raceEnricher}
+ }
+ 
+ // CombineSkillProficiencies combines skill proficiencies from background, class, and user selections.
+ // It adds class skills first (up to class skill count), then user-selected skills, then background skills.
+ // The result is sorted alphabetically.
+ func (cb *CharacterBuilder) CombineSkillProficiencies(
++	race string,
+ 	background backgroundModel.Background,
+ 	class classModel.Class,
+ 	userSkills []string,
+@@ -54,6 +59,24 @@ func (cb *CharacterBuilder) CombineSkillProficiencies(
+ 		}
+ 	}
+ 
++	// Add racial proficiencies (allow duplicates)
++	// Prefer external enricher when available, fallback to domain mapping
++	var racialSkills []string
++	if cb.raceEnricher != nil {
++		if enrichedSkills, err := cb.raceEnricher.GetRacialSkillProficiencies(race); err == nil && len(enrichedSkills) > 0 {
++			racialSkills = enrichedSkills
++		}
++	}
++	if len(racialSkills) == 0 {
++		racialSkills = raceModel.GetRacialSkillProficiencies(race)
++	}
++	for _, skill := range racialSkills {
++		skill = strings.ToLower(strings.TrimSpace(skill))
++		if skill != "" {
++			combined = append(combined, skill)
++		}
++	}
++
+ 	// Sort alphabetically
+ 	sort.Strings(combined)
+ 
+diff --git a/internal/application/character_builder_test.go b/internal/application/character_builder_test.go
+new file mode 100644
+index 0000000..dd248cc
+--- /dev/null
++++ b/internal/application/character_builder_test.go
+@@ -0,0 +1,33 @@
++package application
++
++import (
++	"reflect"
++	"testing"
++
++	bg "modules/dndcharactersheet/internal/domain/background"
++	cl "modules/dndcharactersheet/internal/domain/class"
++)
++
++func TestCombineSkillProficiencies_IncludesRacialAndSorts(t *testing.T) {
++	builder := NewCharacterBuilder(nil) // nil enricher - will fallback to domain
++
++	background := bg.Background{
++		Name:               "acolyte",
++		SkillProficiencies: []string{"insight", "religion"},
++	}
++	class := cl.Class{
++		Name:               "rogue",
++		SkillProficiencies: []string{"acrobatics", "athletics", "deception", "insight"},
++		SkillCount:         2,
++	}
++	user := []string{"athletics"}
++
++	// dwarf grants history
++	got := builder.CombineSkillProficiencies("dwarf", background, class, user)
++
++	// Expect: first two class skills (acrobatics, athletics), then user (athletics), then background (insight, religion), then racial (history) -> sorted
++	expect := []string{"acrobatics", "athletics", "athletics", "history", "insight", "religion"}
++	if !reflect.DeepEqual(got, expect) {
++		t.Fatalf("expected %v, got %v", expect, got)
++	}
++}
+diff --git a/internal/application/character_service.go b/internal/application/character_service.go
+index cbe2067..b1064b6 100644
+--- a/internal/application/character_service.go
++++ b/internal/application/character_service.go
+@@ -3,6 +3,7 @@ package application
+ import (
+ 	"fmt"
+ 	"strings"
++	"sync"
+ 
+ 	characterpkg "modules/dndcharactersheet/internal/domain/character"
+ 	"modules/dndcharactersheet/internal/ports"
+@@ -14,6 +15,7 @@ type CharacterService struct {
+ 	weaponEnricher ports.WeaponEnricher
+ 	armorEnricher  ports.ArmorEnricher
+ 	spellEnricher  ports.SpellEnricher
++	raceEnricher   ports.RaceEnricher
+ 	spellEngine    ports.SpellcastingEngine
+ }
+ 
+@@ -27,6 +29,10 @@ func (s *CharacterService) WithEnrichers(we ports.WeaponEnricher, ae ports.Armor
+ 	s.weaponEnricher = we
+ 	s.armorEnricher = ae
+ 	s.spellEnricher = se
++	// Race enricher is the same as weapon/armor/spell enricher (APIAdapter implements all)
++	if re, ok := we.(ports.RaceEnricher); ok {
++		s.raceEnricher = re
++	}
+ 	return s
+ }
+ 
+@@ -77,8 +83,19 @@ func (s *CharacterService) RecalculateDerived(c *characterpkg.Character) {
+ 		c.SpellAttackBonus = c.Proficiency + spellMod
+ 	}
+ 
+-	// Armor Class calculation
+-	if s.armorEnricher == nil {
++	// Enrich racial traits from API if enricher is available
++	if s.raceEnricher != nil && c.Race != "" {
++		if traits, err := s.raceEnricher.GetRacialTraits(c.Race); err == nil && len(traits) > 0 {
++			c.RacialTraits = make([]string, 0, len(traits))
++			for _, t := range traits {
++				// Store only the trait name
++				c.RacialTraits = append(c.RacialTraits, t.Name)
++			}
++		}
++	}
++
++	// Armor Class calculation with concurrent equipment enrichment
++	if s.armorEnricher == nil && s.weaponEnricher == nil {
+ 		// Fallback minimal rule: base 10 + Dex mod (+2 if shield)
+ 		c.ArmorClass = 10 + c.DexMod
+ 		if c.Shield != "" {
+@@ -102,26 +119,75 @@ func (s *CharacterService) RecalculateDerived(c *characterpkg.Character) {
+ 		return
+ 	}
+ 
+-	// Default armor logic via enricher
+-	base := 10
+-	if c.Armor != "" {
+-		if info, err := s.armorEnricher.GetArmor(c.Armor); err == nil && info != nil {
+-			base = info.BaseAC
+-			if info.DexBonus {
+-				base += c.DexMod
++	// Fetch all equipped items concurrently (requirement: use Go concurrency for API calls)
++	var (
++		armorInfo *ports.ArmorInfo
++		mainInfo  *ports.WeaponInfo
++		offInfo   *ports.WeaponInfo
++		wg        sync.WaitGroup
++		mu        sync.Mutex
++	)
++
++	if c.Armor != "" && s.armorEnricher != nil {
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			if info, err := s.armorEnricher.GetArmor(c.Armor); err == nil && info != nil {
++				mu.Lock()
++				armorInfo = info
++				mu.Unlock()
++			}
++		}()
++	}
++
++	if c.MainHand != "" && s.weaponEnricher != nil {
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			if info, err := s.weaponEnricher.GetWeapon(c.MainHand); err == nil && info != nil {
++				mu.Lock()
++				mainInfo = info
++				mu.Unlock()
+ 			}
+-		} else {
+-			// Fallback: light armor style
+-			base = 10 + c.DexMod
++		}()
++	}
++
++	if c.OffHand != "" && s.weaponEnricher != nil {
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			if info, err := s.weaponEnricher.GetWeapon(c.OffHand); err == nil && info != nil {
++				mu.Lock()
++				offInfo = info
++				mu.Unlock()
++			}
++		}()
++	}
++
++	wg.Wait()
++
++	// Calculate AC using enriched armor info
++	base := 10
++	if armorInfo != nil {
++		base = armorInfo.BaseAC
++		if armorInfo.DexBonus {
++			base += c.DexMod
+ 		}
++	} else if c.Armor != "" {
++		// Fallback if enrichment failed
++		base = 10 + c.DexMod
+ 	} else {
+ 		base = 10 + c.DexMod
+ 	}
++
+ 	if c.Shield != "" {
+-		// Default +2 shield bonus
+ 		base += 2
+ 	}
+ 	c.ArmorClass = base
++
++	// enriched weapon info is available for future use (combat stats, etc.)
++	_ = mainInfo
++	_ = offInfo
+ }
+ 
+ // EquipWeapon enriches weapon information and equips it to the specified slot.
+diff --git a/internal/domain/character/character.go b/internal/domain/character/character.go
+index 77a531f..fb679bf 100644
+--- a/internal/domain/character/character.go
++++ b/internal/domain/character/character.go
+@@ -23,6 +23,7 @@ type Character struct {
+ 	Armor              string
+ 	Shield             string
+ 	Spellcasting       interface{} // Spellcasting data handled in service logic
++	RacialTraits       []string    // Trait descriptions from race (e.g., "Stonecunning", "Darkvision")
+ 	// Data for frontend display
+ 	StrMod            int
+ 	DexMod            int
+diff --git a/internal/domain/race/model.go b/internal/domain/race/model.go
+new file mode 100644
+index 0000000..5372860
+--- /dev/null
++++ b/internal/domain/race/model.go
+@@ -0,0 +1,25 @@
++package race
++
++import "strings"
++
++// GetRacialSkillProficiencies returns the list of skill proficiencies granted by race.
++// We simplify SRD features (e.g., Stonecunning, Keen Senses, Menacing) to regular proficiencies.
++// - Dwarf: Stonecunning -> history
++// - Elf: Keen Senses -> perception
++// - Half-Orc: Menacing -> intimidation
++// Other races return an empty list by default.
++func GetRacialSkillProficiencies(race string) []string {
++	r := strings.ToLower(strings.TrimSpace(race))
++	r = strings.ReplaceAll(r, "-", " ")
++
++	switch r {
++	case "dwarf", "hill dwarf", "mountain dwarf":
++		return []string{"history"}
++	case "elf", "high elf", "wood elf", "dark elf", "drow":
++		return []string{"perception"}
++	case "half orc", "half-orc":
++		return []string{"intimidation"}
++	default:
++		return nil
++	}
++}
+diff --git a/internal/domain/race/model_test.go b/internal/domain/race/model_test.go
+new file mode 100644
+index 0000000..d583fd7
+--- /dev/null
++++ b/internal/domain/race/model_test.go
+@@ -0,0 +1,35 @@
++package race
++
++import "testing"
++
++func TestGetRacialSkillProficiencies(t *testing.T) {
++	cases := []struct {
++		name   string
++		race   string
++		expect []string
++	}{
++		{"dwarf basic", "dwarf", []string{"history"}},
++		{"dwarf hyphen", "mountain-dwarf", []string{"history"}},
++		{"elf basic", "elf", []string{"perception"}},
++		{"elf subtype", "wood elf", []string{"perception"}},
++		{"half orc space", "half orc", []string{"intimidation"}},
++		{"half-orc hyphen", "half-orc", []string{"intimidation"}},
++		{"unknown race", "human", nil},
++	}
++
++	for _, tc := range cases {
++		// capture range variable
++		tc := tc
++		t.Run(tc.name, func(t *testing.T) {
++			got := GetRacialSkillProficiencies(tc.race)
++			if len(got) != len(tc.expect) {
++				t.Fatalf("expected %v, got %v", tc.expect, got)
++			}
++			for i := range got {
++				if got[i] != tc.expect[i] {
++					t.Fatalf("expected %v, got %v", tc.expect, got)
++				}
++			}
++		})
++	}
++}
+diff --git a/internal/ports/enrichers.go b/internal/ports/enrichers.go
+index 0390aa9..de8ca55 100644
+--- a/internal/ports/enrichers.go
++++ b/internal/ports/enrichers.go
+@@ -24,17 +24,34 @@ type SpellInfo struct {
+ 	School string
+ }
+ 
++// TraitInfo contains racial trait enrichment data.
++type TraitInfo struct {
++	Index string
++	Name  string
++	Desc  []string // Description paragraphs
++}
++
+ // WeaponEnricher fetches weapon details from an external service.
+ type WeaponEnricher interface {
+ 	GetWeapon(name string) (*WeaponInfo, error)
++	// Concurrent batch fetch with polite rate limit (maxPerSecond ~5-10 as per requirements)
++	GetWeaponsBatch(names []string, maxPerSecond int) (map[string]*WeaponInfo, error)
+ }
+ 
+ // ArmorEnricher fetches armor details from an external service.
+ type ArmorEnricher interface {
+ 	GetArmor(name string) (*ArmorInfo, error)
++	GetArmorsBatch(names []string, maxPerSecond int) (map[string]*ArmorInfo, error)
+ }
+ 
+ // SpellEnricher fetches spell details from an external service.
+ type SpellEnricher interface {
+ 	GetSpell(name string) (*SpellInfo, error)
++	GetSpellsBatch(names []string, maxPerSecond int) (map[string]*SpellInfo, error)
++}
++
++// RaceEnricher fetches racial trait details from an external service.
++type RaceEnricher interface {
++	GetRacialSkillProficiencies(race string) ([]string, error)
++	GetRacialTraits(race string) ([]*TraitInfo, error)
+ }
+diff --git a/main.go b/main.go
+index e73de45..f7e1018 100644
+--- a/main.go
++++ b/main.go
+@@ -86,10 +86,11 @@ func main() {
+ 		}
+ 		selectedClass := *selectedClassPtr
+ 
+-		// Creating character using domain layer
+-		builder := application.NewCharacterBuilder()
++		// Creating character using application builder with race enricher (API fallback)
++		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
++		builder := application.NewCharacterBuilder(api)
+ 		userSkills := strings.Split(*skills, ",")
+-		combinedSkills := builder.CombineSkillProficiencies(selectedBackground, selectedClass, userSkills)
++		combinedSkills := builder.CombineSkillProficiencies(*race, selectedBackground, selectedClass, userSkills)
+ 
+ 		// Build domain character
+ 		char := domainChar.Character{
+@@ -129,8 +130,7 @@ func main() {
+ 			char.Spellcasting = sc
+ 		}
+ 
+-		// Optionally recalc derived using API enrichers if available
+-		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
++		// Recalculate derived stats using API enrichers (includes racial traits, AC, etc.)
+ 		svc.WithEnrichers(api, api, api).WithSpellcasting(spellEng).RecalculateDerived(&char)
+ 		err = svc.Create(&char)
+ 		if err != nil {

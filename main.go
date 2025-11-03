@@ -87,7 +87,7 @@ func main() {
 		selectedClass := *selectedClassPtr
 
 		// Creating character using application builder with race enricher (API fallback)
-		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		api := apiAdapter.NewAPIAdapter("https://www.dnd5eapi.co/api/2014")
 		builder := application.NewCharacterBuilder(api)
 		userSkills := strings.Split(*skills, ",")
 		combinedSkills := builder.CombineSkillProficiencies(*race, selectedBackground, selectedClass, userSkills)
@@ -160,7 +160,7 @@ func main() {
 		}
 
 		// Ensure derived stats are up to date using service + API
-		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		api := apiAdapter.NewAPIAdapter("https://www.dnd5eapi.co/api/2014")
 		application.NewCharacterService(repo).WithEnrichers(api, api, api).RecalculateDerived(domainCharPtr)
 
 		// Spellcasting display via adapter formatting
@@ -300,7 +300,7 @@ func main() {
 
 		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
-		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		apiAdapter := apiAdapter.NewAPIAdapter("https://www.dnd5eapi.co/api/2014")
 		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
 		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
@@ -403,7 +403,7 @@ func main() {
 
 		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
-		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		apiAdapter := apiAdapter.NewAPIAdapter("https://www.dnd5eapi.co/api/2014")
 		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
 		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
@@ -431,7 +431,7 @@ func main() {
 
 		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
-		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		apiAdapter := apiAdapter.NewAPIAdapter("https://www.dnd5eapi.co/api/2014")
 		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
 		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
