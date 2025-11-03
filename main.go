@@ -7,9 +7,10 @@ import (
 	spellAdapter "modules/dndcharactersheet/internal/adapters/spellcasting"
 	storageAdapter "modules/dndcharactersheet/internal/adapters/storage"
 	"modules/dndcharactersheet/internal/application"
-	backgroundModel "modules/dndcharactersheet/internal/background"
-	classModel "modules/dndcharactersheet/internal/class"
+	backgroundModel "modules/dndcharactersheet/internal/domain/background"
 	domainChar "modules/dndcharactersheet/internal/domain/character"
+	classModel "modules/dndcharactersheet/internal/domain/class"
+	"modules/dndcharactersheet/internal/domain/spellcasting"
 	"os"
 	"strings"
 )
@@ -166,8 +167,9 @@ func main() {
 		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
 		application.NewCharacterService(repo).WithEnrichers(api, api, api).RecalculateDerived(domainCharPtr)
 
-		// Spellcasting display via adapter formatting (no legacy import in CLI)
-		spellEng := spellAdapter.NewEngineAdapter()
+		// Spellcasting display via adapter formatting
+		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
+		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 
 		// Prints character sheet in CLI using domain values
 		fmt.Printf("Name: %s\n", domainCharPtr.Name)
@@ -204,6 +206,18 @@ func main() {
 		cantripsStr := spellEng.FormatCantrips(domainCharPtr.Spellcasting)
 		if cantripsStr != "" {
 			fmt.Print(cantripsStr)
+		}
+
+		// Print known and prepared spells if available
+		if domainCharPtr.Spellcasting != nil {
+			if sc, ok := domainCharPtr.Spellcasting.(*spellcasting.Spellcasting); ok {
+				if len(sc.KnownSpells) > 0 {
+					fmt.Printf("Known spells: %s\n", strings.Join(sc.KnownSpells, ", "))
+				}
+				if len(sc.PreparedSpells) > 0 {
+					fmt.Printf("Prepared spells: %s\n", strings.Join(sc.PreparedSpells, ", "))
+				}
+			}
 		}
 		if domainCharPtr.Name != "Merry Brandybuck" && domainCharPtr.Name != "Pippin Took" && domainCharPtr.Name != "Obi-Wan Kenobi" && domainCharPtr.Name != "Anakin Skywalker" {
 			fmt.Printf("Armor class: %d\n", domainCharPtr.ArmorClass)
@@ -282,7 +296,8 @@ func main() {
 		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		spellEng := spellAdapter.NewEngineAdapter()
+		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
+		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
 
 		// Check slot occupation before attempting equip
@@ -384,7 +399,8 @@ func main() {
 		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		spellEng := spellAdapter.NewEngineAdapter()
+		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
+		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
 
 		if _, err := svc.Get(*name); err != nil {
@@ -411,7 +427,8 @@ func main() {
 		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		spellEng := spellAdapter.NewEngineAdapter()
+		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
+		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
 
 		if _, err := svc.Get(*name); err != nil {
