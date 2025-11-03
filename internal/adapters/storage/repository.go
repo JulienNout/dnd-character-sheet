@@ -87,7 +87,7 @@ func domainToStorage(d *characterpkg.Character) stor.Character {
 		OffHand:            d.OffHand,
 		Armor:              d.Armor,
 		Shield:             d.Shield,
-		Spellcasting:       d.Spellcasting,
+		Spellcasting:       marshalSpellcasting(d.Spellcasting),
 		StrMod:             d.StrMod,
 		DexMod:             d.DexMod,
 		ConMod:             d.ConMod,
@@ -136,6 +136,34 @@ func storageToDomain(s *stor.Character) *characterpkg.Character {
 	return d
 }
 
+// marshalSpellcasting converts domain spellcasting to storage format (with JSON-serializable structure).
+func marshalSpellcasting(data interface{}) interface{} {
+	if data == nil {
+		return nil
+	}
+
+	// Type assert to domain spellcasting
+	sc, ok := data.(*spellcasting.Spellcasting)
+	if !ok {
+		return data // Return as-is if not our type
+	}
+
+	// Create a storage model with JSON tags for serialization
+	storageModel := struct {
+		CasterType     string      `json:"CasterType"`
+		KnownSpells    []string    `json:"KnownSpells"`
+		PreparedSpells []string    `json:"PreparedSpells"`
+		SpellSlots     map[int]int `json:"SpellSlots"`
+	}{
+		CasterType:     string(sc.CasterType),
+		KnownSpells:    sc.KnownSpells,
+		PreparedSpells: sc.PreparedSpells,
+		SpellSlots:     sc.SpellSlots,
+	}
+
+	return storageModel
+}
+
 // unmarshalSpellcasting converts the storage interface{} back to domain spellcasting type.
 func unmarshalSpellcasting(data interface{}) interface{} {
 	if data == nil {
@@ -143,16 +171,30 @@ func unmarshalSpellcasting(data interface{}) interface{} {
 	}
 
 	// When loading from JSON, interface{} will be a map[string]interface{}
-	// We need to re-marshal and unmarshal it into the proper domain type
+	// Use a storage model with JSON tags for deserialization
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		return nil
 	}
 
-	var sc spellcasting.Spellcasting
-	if err := json.Unmarshal(jsonBytes, &sc); err != nil {
+	var storageModel struct {
+		CasterType     string      `json:"CasterType"`
+		KnownSpells    []string    `json:"KnownSpells"`
+		PreparedSpells []string    `json:"PreparedSpells"`
+		SpellSlots     map[int]int `json:"SpellSlots"`
+	}
+
+	if err := json.Unmarshal(jsonBytes, &storageModel); err != nil {
 		return nil
 	}
 
-	return &sc
+	// Map to domain model (no JSON tags)
+	sc := &spellcasting.Spellcasting{
+		CasterType:     spellcasting.CasterType(storageModel.CasterType),
+		KnownSpells:    storageModel.KnownSpells,
+		PreparedSpells: storageModel.PreparedSpells,
+		SpellSlots:     storageModel.SpellSlots,
+	}
+
+	return sc
 }
