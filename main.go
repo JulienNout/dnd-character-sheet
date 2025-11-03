@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	apiAdapter "modules/dndcharactersheet/internal/adapters/api"
 	storageAdapter "modules/dndcharactersheet/internal/adapters/storage"
 	"modules/dndcharactersheet/internal/application"
 	backgroundModel "modules/dndcharactersheet/internal/background"
@@ -13,7 +14,6 @@ import (
 	domainChar "modules/dndcharactersheet/internal/domain/character"
 	"modules/dndcharactersheet/internal/equipment"
 	"modules/dndcharactersheet/internal/spellcasting"
-	storage "modules/dndcharactersheet/internal/storage"
 	"os"
 	"strings"
 )
@@ -364,30 +364,21 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Load characters
-		characterStorage := storage.NewSingleFileStorage("characters.json")
-		char, err := characterStorage.Load(*name)
+		// Setup service with enrichers
+		repo := storageAdapter.NewJSONRepository("characters.json")
+		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
+
+		// Check slot occupation before attempting equip
+		char, err := svc.Get(*name)
 		if err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
 			os.Exit(1)
 		}
 
-		// Load equipment CSV
-		equipmentList, err := equipment.LoadEquipmentFromCSV("5e-SRD-Equipment.csv")
-		if err != nil {
-			fmt.Printf("could not load equipment: %v\n", err)
-			os.Exit(1)
-		}
-
 		// Equip weapon
 		if *weapon != "" {
-			item := equipment.FindEquipmentByName(equipmentList, *weapon)
-			if item == nil {
-				fmt.Printf("weapon '%s' not found\n", *weapon)
-				os.Exit(1)
-			}
-
-			// respect slot and normalize
+			// Normalize slot
 			s := strings.ToLower(strings.TrimSpace(*slot))
 			sNorm := "main hand"
 			switch s {
@@ -399,83 +390,86 @@ func main() {
 				sNorm = "main hand"
 			}
 
-			itemName := strings.ToLower(item.Name)
-			// prevent overwriting an occupied slot
-			switch sNorm {
-			case "main hand":
-				if char.MainHand != "" {
-					fmt.Printf("%s already occupied\n", sNorm)
-					os.Exit(1)
-				}
-				char.MainHand = itemName
-			case "off hand":
-				if char.OffHand != "" {
-					fmt.Printf("%s already occupied\n", sNorm)
-					os.Exit(1)
-				}
-				char.OffHand = itemName
+			// Check if slot occupied
+			if sNorm == "main hand" && char.MainHand != "" {
+				fmt.Printf("%s already occupied\n", sNorm)
+				os.Exit(1)
 			}
-
-			// Save
-			err = characterStorage.Save(char)
-			if err != nil {
-				fmt.Printf("error saving character: %v\n", err)
+			if sNorm == "off hand" && char.OffHand != "" {
+				fmt.Printf("%s already occupied\n", sNorm)
 				os.Exit(1)
 			}
 
-			fmt.Printf("Equipped weapon %s to %s\n", itemName, sNorm)
+			// Use service to equip with API enrichment
+			err = svc.EquipWeapon(*name, *weapon, sNorm)
+			if err != nil {
+				fmt.Printf("error equipping weapon: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Equipped weapon %s to %s\n", strings.ToLower(*weapon), sNorm)
 			return
 		}
 
 		// Equip armor
 		if *armor != "" {
-			item := equipment.FindEquipmentByName(equipmentList, *armor)
-			if item == nil {
-				fmt.Printf("armor '%s' not found\n", *armor)
-				os.Exit(1)
-			}
 			if char.Armor != "" {
 				fmt.Printf("armor already occupied\n")
 				os.Exit(1)
 			}
-			char.Armor = strings.ToLower(item.Name)
-			// Recalculate armor class, initiative, and passive perception
-			characterService := characterModel.NewCharacterService()
-			char.ArmorClass = combat.CalculateArmorClass(&char, characterService)
-			char.Initiative = combat.CalculateInitiative(&char, characterService)
-			char.PassivePerception = combat.CalculatePassivePerception(&char, characterService)
-			err = characterStorage.Save(char)
+
+			err = svc.EquipArmor(*name, *armor)
 			if err != nil {
-				fmt.Printf("error saving character: %v\n", err)
+				fmt.Printf("error equipping armor: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Equipped armor %s\n", strings.ToLower(item.Name))
+
+			// Recalculate derived stats after armor change
+			char, _ = svc.Get(*name)
+			legacyChar := characterModel.Character{
+				Str: char.Str, Dex: char.Dex, Con: char.Con, Int: char.Int, Wis: char.Wis, Cha: char.Cha,
+				StrMod: char.StrMod, DexMod: char.DexMod, ConMod: char.ConMod,
+				IntMod: char.IntMod, WisMod: char.WisMod, ChaMod: char.ChaMod,
+				Armor: char.Armor, Shield: char.Shield,
+			}
+			legacyService := characterModel.NewCharacterService()
+			char.ArmorClass = combat.CalculateArmorClass(&legacyChar, legacyService)
+			char.Initiative = combat.CalculateInitiative(&legacyChar, legacyService)
+			char.PassivePerception = combat.CalculatePassivePerception(&legacyChar, legacyService)
+			svc.Create(char)
+
+			fmt.Printf("Equipped armor %s\n", strings.ToLower(*armor))
 			return
 		}
 
 		// Equip shield
 		if *shield != "" {
-			item := equipment.FindEquipmentByName(equipmentList, *shield)
-			if item == nil {
-				fmt.Printf("shield '%s' not found\n", *shield)
-				os.Exit(1)
-			}
 			if char.Shield != "" {
 				fmt.Printf("shield already occupied\n")
 				os.Exit(1)
 			}
-			char.Shield = strings.ToLower(item.Name)
-			// Recalculate armor class, initiative, and passive perception
-			characterService := characterModel.NewCharacterService()
-			char.ArmorClass = combat.CalculateArmorClass(&char, characterService)
-			char.Initiative = combat.CalculateInitiative(&char, characterService)
-			char.PassivePerception = combat.CalculatePassivePerception(&char, characterService)
-			err = characterStorage.Save(char)
+
+			err = svc.EquipShield(*name, *shield)
 			if err != nil {
-				fmt.Printf("error saving character: %v\n", err)
+				fmt.Printf("error equipping shield: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Equipped shield %s\n", strings.ToLower(item.Name))
+
+			// Recalculate derived stats after shield change
+			char, _ = svc.Get(*name)
+			legacyChar := characterModel.Character{
+				Str: char.Str, Dex: char.Dex, Con: char.Con, Int: char.Int, Wis: char.Wis, Cha: char.Cha,
+				StrMod: char.StrMod, DexMod: char.DexMod, ConMod: char.ConMod,
+				IntMod: char.IntMod, WisMod: char.WisMod, ChaMod: char.ChaMod,
+				Armor: char.Armor, Shield: char.Shield,
+			}
+			legacyService := characterModel.NewCharacterService()
+			char.ArmorClass = combat.CalculateArmorClass(&legacyChar, legacyService)
+			char.Initiative = combat.CalculateInitiative(&legacyChar, legacyService)
+			char.PassivePerception = combat.CalculatePassivePerception(&legacyChar, legacyService)
+			svc.Create(char)
+
+			fmt.Printf("Equipped shield %s\n", strings.ToLower(*shield))
 			return
 		}
 
@@ -488,12 +482,25 @@ func main() {
 			fmt.Println("-name and -spell are required")
 			os.Exit(2)
 		}
-		characterStorage := storage.NewSingleFileStorage("characters.json")
-		char, err := characterStorage.Load(*name)
+
+		// Setup service with enrichers
+		repo := storageAdapter.NewJSONRepository("characters.json")
+		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
+
+		// Get character
+		domainCharPtr, err := svc.Get(*name)
 		if err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
 			os.Exit(1)
 		}
+
+		// Convert to legacy for spellcasting logic
+		char := characterModel.Character{
+			Name: domainCharPtr.Name, Class: domainCharPtr.Class, Level: domainCharPtr.Level,
+			Spellcasting: domainCharPtr.Spellcasting,
+		}
+
 		// Always assign spellcasting for the character's class and level
 		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
 		char.Spellcasting = sc
@@ -517,13 +524,17 @@ func main() {
 			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
 			os.Exit(1)
 		}
-		result := spellcasting.LearnSpell(&sc, *foundSpell)
-		char.Spellcasting = sc
-		err = characterStorage.Save(char)
+
+		// Validate spell exists via API enricher
+		err = svc.LearnSpell(*name, *spellName)
 		if err != nil {
-			fmt.Printf("error saving character: %v\n", err)
-			os.Exit(1)
+			fmt.Printf("spell validation failed: %v\n", err)
+			// Continue anyway with CSV data
 		}
+
+		result := spellcasting.LearnSpell(&sc, *foundSpell)
+		domainCharPtr.Spellcasting = sc
+		svc.Create(domainCharPtr)
 		fmt.Println(result)
 		return
 
@@ -536,12 +547,25 @@ func main() {
 			fmt.Println("-name and -spell are required")
 			os.Exit(2)
 		}
-		characterStorage := storage.NewSingleFileStorage("characters.json")
-		char, err := characterStorage.Load(*name)
+
+		// Setup service with enrichers
+		repo := storageAdapter.NewJSONRepository("characters.json")
+		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
+
+		// Get character
+		domainCharPtr, err := svc.Get(*name)
 		if err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
 			os.Exit(1)
 		}
+
+		// Convert to legacy for spellcasting logic
+		char := characterModel.Character{
+			Name: domainCharPtr.Name, Class: domainCharPtr.Class, Level: domainCharPtr.Level,
+			Spellcasting: domainCharPtr.Spellcasting,
+		}
+
 		// Always assign spellcasting for the character's class and level
 		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
 		char.Spellcasting = sc
@@ -565,13 +589,17 @@ func main() {
 			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
 			os.Exit(1)
 		}
-		result := spellcasting.PrepareSpell(&sc, *foundSpell)
-		char.Spellcasting = sc
-		err = characterStorage.Save(char)
+
+		// Validate spell exists via API enricher
+		err = svc.PrepareSpell(*name, *spellName)
 		if err != nil {
-			fmt.Printf("error saving character: %v\n", err)
-			os.Exit(1)
+			fmt.Printf("spell validation failed: %v\n", err)
+			// Continue anyway with CSV data
 		}
+
+		result := spellcasting.PrepareSpell(&sc, *foundSpell)
+		domainCharPtr.Spellcasting = sc
+		svc.Create(domainCharPtr)
 		fmt.Println(result)
 		return
 
