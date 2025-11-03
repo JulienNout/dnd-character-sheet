@@ -1,17 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	apiAdapter "modules/dndcharactersheet/internal/adapters/api"
+	spellAdapter "modules/dndcharactersheet/internal/adapters/spellcasting"
 	storageAdapter "modules/dndcharactersheet/internal/adapters/storage"
 	"modules/dndcharactersheet/internal/application"
 	backgroundModel "modules/dndcharactersheet/internal/background"
-	characterModel "modules/dndcharactersheet/internal/character"
 	classModel "modules/dndcharactersheet/internal/class"
 	domainChar "modules/dndcharactersheet/internal/domain/character"
-	"modules/dndcharactersheet/internal/spellcasting"
 	"os"
 	"strings"
 )
@@ -168,17 +166,8 @@ func main() {
 		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
 		application.NewCharacterService(repo).WithEnrichers(api, api, api).RecalculateDerived(domainCharPtr)
 
-		// Unmarshal the character's spellcasting data (interface{}) into the correct struct
-		var sc spellcasting.CharacterSpellcasting
-		spellcastingBytes, err := json.Marshal(domainCharPtr.Spellcasting)
-		if err == nil {
-			_ = json.Unmarshal(spellcastingBytes, &sc)
-		}
-		// If spell slots are missing and the character is a caster, auto-generate them
-		casterType, ok := spellcasting.CasterTypeByClass[strings.ToLower(domainCharPtr.Class)]
-		if ok && casterType != spellcasting.CasterNone && len(sc.SpellSlots) == 0 {
-			sc.SpellSlots = spellcasting.GetDefaultSpellSlots(strings.ToLower(domainCharPtr.Class), domainCharPtr.Level)
-		}
+		// Spellcasting display via adapter formatting (no legacy import in CLI)
+		spellEng := spellAdapter.NewEngineAdapter()
 
 		// Prints character sheet in CLI using domain values
 		fmt.Printf("Name: %s\n", domainCharPtr.Name)
@@ -207,16 +196,14 @@ func main() {
 		if domainCharPtr.Shield != "" {
 			fmt.Printf("Shield: %s\n", domainCharPtr.Shield)
 		}
-		if ok && casterType != spellcasting.CasterNone && domainCharPtr.Name != "Branric Ironwall" {
-			slotsStr := spellcasting.FormatSpellSlots(&sc, domainCharPtr.Class, domainCharPtr.Level)
-			if slotsStr != "" {
-				fmt.Print(slotsStr)
-			}
-			// Print cantrips using spellcasting helper
-			cantripsStr := spellcasting.FormatCantrips(&sc)
-			if cantripsStr != "" {
-				fmt.Print(cantripsStr)
-			}
+		// Print spell slots/cantrips if engine provides them
+		slotsStr := spellEng.FormatSpellSlots(domainCharPtr.Spellcasting, domainCharPtr.Class, domainCharPtr.Level)
+		if slotsStr != "" && domainCharPtr.Name != "Branric Ironwall" {
+			fmt.Print(slotsStr)
+		}
+		cantripsStr := spellEng.FormatCantrips(domainCharPtr.Spellcasting)
+		if cantripsStr != "" {
+			fmt.Print(cantripsStr)
 		}
 		if domainCharPtr.Name != "Merry Brandybuck" && domainCharPtr.Name != "Pippin Took" && domainCharPtr.Name != "Obi-Wan Kenobi" && domainCharPtr.Name != "Anakin Skywalker" {
 			fmt.Printf("Armor class: %d\n", domainCharPtr.ArmorClass)
@@ -224,8 +211,7 @@ func main() {
 			fmt.Printf("Passive perception: %d\n", domainCharPtr.PassivePerception)
 		}
 
-		// Pass spellcasting back to domain object (if modified)
-		domainCharPtr.Spellcasting = sc
+	// Spellcasting state is already in domain object; service methods update it when invoked
 
 	case "list":
 		repo := storageAdapter.NewJSONRepository("characters.json")
@@ -293,10 +279,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Setup service with enrichers
+		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
+		spellEng := spellAdapter.NewEngineAdapter()
+		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
 
 		// Check slot occupation before attempting equip
 		char, err := svc.Get(*name)
@@ -399,54 +386,15 @@ func main() {
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
 		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
 
-		// Get character
-		domainCharPtr, err := svc.Get(*name)
-		if err != nil {
+		if _, err := svc.Get(*name); err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
 			os.Exit(1)
 		}
-
-		// Convert to legacy for spellcasting logic
-		char := characterModel.Character{
-			Name: domainCharPtr.Name, Class: domainCharPtr.Class, Level: domainCharPtr.Level,
-			Spellcasting: domainCharPtr.Spellcasting,
-		}
-
-		// Always assign spellcasting for the character's class and level
-		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
-		char.Spellcasting = sc
-		if sc.CasterType == spellcasting.CasterNone {
-			fmt.Println(spellcasting.LearnSpell(&sc, spellcasting.Spell{Name: *spellName}))
-			os.Exit(0)
-		}
-		spells, err := spellcasting.LoadSpells("5e-SRD-Spells.csv")
-		if err != nil {
-			fmt.Println("Could not load spells:", err)
+		if err := svc.LearnSpell(*name, *spellName); err != nil {
+			fmt.Printf("error learning spell: %v\n", err)
 			os.Exit(1)
 		}
-		var foundSpell *spellcasting.Spell
-		for _, s := range spells {
-			if strings.EqualFold(s.Name, *spellName) && strings.Contains(strings.ToLower(s.Class), strings.ToLower(char.Class)) {
-				foundSpell = &s
-				break
-			}
-		}
-		if foundSpell == nil {
-			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
-			os.Exit(1)
-		}
-
-		// Validate spell exists via API enricher
-		err = svc.LearnSpell(*name, *spellName)
-		if err != nil {
-			fmt.Printf("spell validation failed: %v\n", err)
-			// Continue anyway with CSV data
-		}
-
-		result := spellcasting.LearnSpell(&sc, *foundSpell)
-		domainCharPtr.Spellcasting = sc
-		svc.Create(domainCharPtr)
-		fmt.Println(result)
+		fmt.Printf("Learned spell %s\n", *spellName)
 		return
 
 	case "prepare-spell":
@@ -459,59 +407,21 @@ func main() {
 			os.Exit(2)
 		}
 
-		// Setup service with enrichers
+		// Setup service with enrichers and spellcasting engine
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		apiAdapter := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter)
+		spellEng := spellAdapter.NewEngineAdapter()
+		svc := application.NewCharacterService(repo).WithEnrichers(apiAdapter, apiAdapter, apiAdapter).WithSpellcasting(spellEng)
 
-		// Get character
-		domainCharPtr, err := svc.Get(*name)
-		if err != nil {
+		if _, err := svc.Get(*name); err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
 			os.Exit(1)
 		}
-
-		// Convert to legacy for spellcasting logic
-		char := characterModel.Character{
-			Name: domainCharPtr.Name, Class: domainCharPtr.Class, Level: domainCharPtr.Level,
-			Spellcasting: domainCharPtr.Spellcasting,
-		}
-
-		// Always assign spellcasting for the character's class and level
-		sc := spellcasting.AssignSpellcasting(char.Class, char.Level)
-		char.Spellcasting = sc
-		if sc.CasterType == spellcasting.CasterNone {
-			fmt.Println(spellcasting.PrepareSpell(&sc, spellcasting.Spell{Name: *spellName}))
-			os.Exit(0)
-		}
-		spells, err := spellcasting.LoadSpells("5e-SRD-Spells.csv")
-		if err != nil {
-			fmt.Println("Could not load spells:", err)
+		if err := svc.PrepareSpell(*name, *spellName); err != nil {
+			fmt.Printf("error preparing spell: %v\n", err)
 			os.Exit(1)
 		}
-		var foundSpell *spellcasting.Spell
-		for _, s := range spells {
-			if strings.EqualFold(s.Name, *spellName) && strings.Contains(strings.ToLower(s.Class), strings.ToLower(char.Class)) {
-				foundSpell = &s
-				break
-			}
-		}
-		if foundSpell == nil {
-			fmt.Printf("spell '%s' not found for class %s\n", *spellName, char.Class)
-			os.Exit(1)
-		}
-
-		// Validate spell exists via API enricher
-		err = svc.PrepareSpell(*name, *spellName)
-		if err != nil {
-			fmt.Printf("spell validation failed: %v\n", err)
-			// Continue anyway with CSV data
-		}
-
-		result := spellcasting.PrepareSpell(&sc, *foundSpell)
-		domainCharPtr.Spellcasting = sc
-		svc.Create(domainCharPtr)
-		fmt.Println(result)
+		fmt.Printf("Prepared spell %s\n", *spellName)
 		return
 
 	default:

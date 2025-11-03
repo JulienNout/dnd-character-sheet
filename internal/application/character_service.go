@@ -14,6 +14,7 @@ type CharacterService struct {
 	weaponEnricher ports.WeaponEnricher
 	armorEnricher  ports.ArmorEnricher
 	spellEnricher  ports.SpellEnricher
+	spellEngine    ports.SpellcastingEngine
 }
 
 // NewCharacterService creates a new service with repository port.
@@ -26,6 +27,12 @@ func (s *CharacterService) WithEnrichers(we ports.WeaponEnricher, ae ports.Armor
 	s.weaponEnricher = we
 	s.armorEnricher = ae
 	s.spellEnricher = se
+	return s
+}
+
+// WithSpellcasting sets the spellcasting engine port.
+func (s *CharacterService) WithSpellcasting(engine ports.SpellcastingEngine) *CharacterService {
+	s.spellEngine = engine
 	return s
 }
 
@@ -175,8 +182,8 @@ func (s *CharacterService) EquipShield(characterName, shieldName string) error {
 
 // LearnSpell enriches spell information and adds it to the character's known spells.
 func (s *CharacterService) LearnSpell(characterName, spellName string) error {
-	if s.spellEnricher == nil {
-		return fmt.Errorf("spell enricher not configured")
+	if s.spellEnricher == nil || s.spellEngine == nil {
+		return fmt.Errorf("spell services not configured")
 	}
 
 	char, err := s.repo.GetByID(characterName)
@@ -184,23 +191,31 @@ func (s *CharacterService) LearnSpell(characterName, spellName string) error {
 		return fmt.Errorf("character not found: %w", err)
 	}
 
-	// Enrich spell data from external API
-	_, err = s.spellEnricher.GetSpell(spellName)
-	if err != nil {
-		return fmt.Errorf("failed to enrich spell: %w", err)
+	// Validate spell via API enricher (optional)
+	if _, err = s.spellEnricher.GetSpell(spellName); err != nil {
+		return fmt.Errorf("failed to validate spell: %w", err)
 	}
 
-	// Note: The Spellcasting field is interface{} in domain model
-	// This would ideally be a proper domain type, but for now we preserve existing structure
-	// The actual spell management is handled by the legacy spellcasting package
+	// Ensure spellcasting is assigned for class/level
+	if char.Spellcasting == nil {
+		if sc, err := s.spellEngine.AssignSpellcasting(char.Class, char.Level); err == nil {
+			char.Spellcasting = sc
+		}
+	}
 
+	// Learn through engine
+	updated, _, err := s.spellEngine.LearnSpell(char.Spellcasting, char.Class, spellName)
+	if err != nil {
+		return err
+	}
+	char.Spellcasting = updated
 	return s.repo.Save(char)
 }
 
 // PrepareSpell marks a spell as prepared for the character.
 func (s *CharacterService) PrepareSpell(characterName, spellName string) error {
-	if s.spellEnricher == nil {
-		return fmt.Errorf("spell enricher not configured")
+	if s.spellEnricher == nil || s.spellEngine == nil {
+		return fmt.Errorf("spell services not configured")
 	}
 
 	char, err := s.repo.GetByID(characterName)
@@ -208,12 +223,23 @@ func (s *CharacterService) PrepareSpell(characterName, spellName string) error {
 		return fmt.Errorf("character not found: %w", err)
 	}
 
-	// Enrich spell data from external API
-	_, err = s.spellEnricher.GetSpell(spellName)
-	if err != nil {
-		return fmt.Errorf("failed to enrich spell: %w", err)
+	// Validate spell via API enricher (optional)
+	if _, err = s.spellEnricher.GetSpell(spellName); err != nil {
+		return fmt.Errorf("failed to validate spell: %w", err)
 	}
 
-	// Note: Spell preparation logic handled by legacy spellcasting package
+	// Ensure spellcasting is assigned for class/level
+	if char.Spellcasting == nil {
+		if sc, err := s.spellEngine.AssignSpellcasting(char.Class, char.Level); err == nil {
+			char.Spellcasting = sc
+		}
+	}
+
+	// Prepare through engine
+	updated, _, err := s.spellEngine.PrepareSpell(char.Spellcasting, char.Class, spellName)
+	if err != nil {
+		return err
+	}
+	char.Spellcasting = updated
 	return s.repo.Save(char)
 }
