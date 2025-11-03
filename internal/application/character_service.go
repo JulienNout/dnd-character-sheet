@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	characterpkg "modules/dndcharactersheet/internal/domain/character"
 	"modules/dndcharactersheet/internal/ports"
@@ -14,6 +15,7 @@ type CharacterService struct {
 	weaponEnricher ports.WeaponEnricher
 	armorEnricher  ports.ArmorEnricher
 	spellEnricher  ports.SpellEnricher
+	raceEnricher   ports.RaceEnricher
 	spellEngine    ports.SpellcastingEngine
 }
 
@@ -27,6 +29,10 @@ func (s *CharacterService) WithEnrichers(we ports.WeaponEnricher, ae ports.Armor
 	s.weaponEnricher = we
 	s.armorEnricher = ae
 	s.spellEnricher = se
+	// Race enricher is the same as weapon/armor/spell enricher (APIAdapter implements all)
+	if re, ok := we.(ports.RaceEnricher); ok {
+		s.raceEnricher = re
+	}
 	return s
 }
 
@@ -77,8 +83,19 @@ func (s *CharacterService) RecalculateDerived(c *characterpkg.Character) {
 		c.SpellAttackBonus = c.Proficiency + spellMod
 	}
 
-	// Armor Class calculation
-	if s.armorEnricher == nil {
+	// Enrich racial traits from API if enricher is available
+	if s.raceEnricher != nil && c.Race != "" {
+		if traits, err := s.raceEnricher.GetRacialTraits(c.Race); err == nil && len(traits) > 0 {
+			c.RacialTraits = make([]string, 0, len(traits))
+			for _, t := range traits {
+				// Store only the trait name
+				c.RacialTraits = append(c.RacialTraits, t.Name)
+			}
+		}
+	}
+
+	// Armor Class calculation with concurrent equipment enrichment
+	if s.armorEnricher == nil && s.weaponEnricher == nil {
 		// Fallback minimal rule: base 10 + Dex mod (+2 if shield)
 		c.ArmorClass = 10 + c.DexMod
 		if c.Shield != "" {
@@ -102,26 +119,75 @@ func (s *CharacterService) RecalculateDerived(c *characterpkg.Character) {
 		return
 	}
 
-	// Default armor logic via enricher
-	base := 10
-	if c.Armor != "" {
-		if info, err := s.armorEnricher.GetArmor(c.Armor); err == nil && info != nil {
-			base = info.BaseAC
-			if info.DexBonus {
-				base += c.DexMod
+	// Fetch all equipped items concurrently (requirement: use Go concurrency for API calls)
+	var (
+		armorInfo *ports.ArmorInfo
+		mainInfo  *ports.WeaponInfo
+		offInfo   *ports.WeaponInfo
+		wg        sync.WaitGroup
+		mu        sync.Mutex
+	)
+
+	if c.Armor != "" && s.armorEnricher != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if info, err := s.armorEnricher.GetArmor(c.Armor); err == nil && info != nil {
+				mu.Lock()
+				armorInfo = info
+				mu.Unlock()
 			}
-		} else {
-			// Fallback: light armor style
-			base = 10 + c.DexMod
+		}()
+	}
+
+	if c.MainHand != "" && s.weaponEnricher != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if info, err := s.weaponEnricher.GetWeapon(c.MainHand); err == nil && info != nil {
+				mu.Lock()
+				mainInfo = info
+				mu.Unlock()
+			}
+		}()
+	}
+
+	if c.OffHand != "" && s.weaponEnricher != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if info, err := s.weaponEnricher.GetWeapon(c.OffHand); err == nil && info != nil {
+				mu.Lock()
+				offInfo = info
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Calculate AC using enriched armor info
+	base := 10
+	if armorInfo != nil {
+		base = armorInfo.BaseAC
+		if armorInfo.DexBonus {
+			base += c.DexMod
 		}
+	} else if c.Armor != "" {
+		// Fallback if enrichment failed
+		base = 10 + c.DexMod
 	} else {
 		base = 10 + c.DexMod
 	}
+
 	if c.Shield != "" {
-		// Default +2 shield bonus
 		base += 2
 	}
 	c.ArmorClass = base
+
+	// enriched weapon info is available for future use (combat stats, etc.)
+	_ = mainInfo
+	_ = offInfo
 }
 
 // EquipWeapon enriches weapon information and equips it to the specified slot.

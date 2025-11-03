@@ -35,4 +35,4 @@
 
 6. [x] User interfaces
    - [x] CLI: create a character, view it and list all characters
-   - [ ] HTML frontend: a list of all characters that links to their character sheets (HTML template provided on Learn)
+   - [x] HTML frontend: a list of all characters that links to their character sheets (HTML template provided on Learn)

@@ -28,6 +28,7 @@ type Character struct {
 	Armor              string      `json:"armor,omitempty"`
 	Shield             string      `json:"shield,omitempty"`
 	Spellcasting       interface{} `json:"spellcasting"`
+	RacialTraits       []string    `json:"racial_traits,omitempty"`
 	StrMod             int         `json:"str_mod"`
 	DexMod             int         `json:"dex_mod"`
 	ConMod             int         `json:"con_mod"`

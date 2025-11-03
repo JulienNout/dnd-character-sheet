@@ -86,10 +86,11 @@ func main() {
 		}
 		selectedClass := *selectedClassPtr
 
-		// Creating character using domain layer
-		builder := application.NewCharacterBuilder()
+		// Creating character using application builder with race enricher (API fallback)
+		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		builder := application.NewCharacterBuilder(api)
 		userSkills := strings.Split(*skills, ",")
-		combinedSkills := builder.CombineSkillProficiencies(selectedBackground, selectedClass, userSkills)
+		combinedSkills := builder.CombineSkillProficiencies(*race, selectedBackground, selectedClass, userSkills)
 
 		// Build domain character
 		char := domainChar.Character{
@@ -129,8 +130,7 @@ func main() {
 			char.Spellcasting = sc
 		}
 
-		// Optionally recalc derived using API enrichers if available
-		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
+		// Recalculate derived stats using API enrichers (includes racial traits, AC, etc.)
 		svc.WithEnrichers(api, api, api).WithSpellcasting(spellEng).RecalculateDerived(&char)
 		err = svc.Create(&char)
 		if err != nil {

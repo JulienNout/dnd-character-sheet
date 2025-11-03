@@ -124,6 +124,12 @@ function fillCharacterSheet(character) {
 	if (spellTextarea) {
 		spellTextarea.value = attacksText;
 	}
+
+	// Fill Features & Traits section with racial traits
+	const featuresTextarea = document.querySelector('[name="features"]');
+	if (featuresTextarea && character.racial_traits && Array.isArray(character.racial_traits)) {
+		featuresTextarea.value = character.racial_traits.join('\n');
+	}
 }
 
 // Main logic

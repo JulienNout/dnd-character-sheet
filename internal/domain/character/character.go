@@ -23,6 +23,7 @@ type Character struct {
 	Armor              string
 	Shield             string
 	Spellcasting       interface{} // Spellcasting data handled in service logic
+	RacialTraits       []string    // Trait descriptions from race (e.g., "Stonecunning", "Darkvision")
 	// Data for frontend display
 	StrMod            int
 	DexMod            int
