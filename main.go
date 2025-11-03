@@ -188,12 +188,45 @@ func main() {
 			os.Exit(2)
 		}
 
-		// Load character using single file storage
-		characterStorage := storage.NewSingleFileStorage("characters.json")
-		char, err := characterStorage.Load(*name)
+		// Load character using application service
+		repo := storageAdapter.NewJSONRepository("characters.json")
+		svc := application.NewCharacterService(repo)
+		domainCharPtr, err := svc.Get(*name)
 		if err != nil {
 			fmt.Printf("character \"%s\" not found\n", *name)
 			os.Exit(1)
+		}
+
+		// Convert domain character to legacy for display logic
+		char := characterModel.Character{
+			Name:               domainCharPtr.Name,
+			Race:               domainCharPtr.Race,
+			Class:              domainCharPtr.Class,
+			Level:              domainCharPtr.Level,
+			Str:                domainCharPtr.Str,
+			Dex:                domainCharPtr.Dex,
+			Con:                domainCharPtr.Con,
+			Int:                domainCharPtr.Int,
+			Wis:                domainCharPtr.Wis,
+			Cha:                domainCharPtr.Cha,
+			Background:         domainCharPtr.Background,
+			Proficiency:        domainCharPtr.Proficiency,
+			SkillProficiencies: domainCharPtr.SkillProficiencies,
+			MainHand:           domainCharPtr.MainHand,
+			OffHand:            domainCharPtr.OffHand,
+			Armor:              domainCharPtr.Armor,
+			Shield:             domainCharPtr.Shield,
+			Spellcasting:       domainCharPtr.Spellcasting,
+			StrMod:             domainCharPtr.StrMod,
+			DexMod:             domainCharPtr.DexMod,
+			ConMod:             domainCharPtr.ConMod,
+			IntMod:             domainCharPtr.IntMod,
+			WisMod:             domainCharPtr.WisMod,
+			ChaMod:             domainCharPtr.ChaMod,
+			ArmorClass:         domainCharPtr.ArmorClass,
+			Initiative:         domainCharPtr.Initiative,
+			PassivePerception:  domainCharPtr.PassivePerception,
+			SpellAttackBonus:   domainCharPtr.SpellAttackBonus,
 		}
 
 		// fmt.Printf("Character: %+v\n", char)
@@ -266,21 +299,22 @@ func main() {
 		char.SpellAttackBonus = spellStats.SpellAttackBonus
 
 	case "list":
-		characterStorage := storage.NewSingleFileStorage("characters.json")
-		summaries, err := characterStorage.List()
+		repo := storageAdapter.NewJSONRepository("characters.json")
+		svc := application.NewCharacterService(repo)
+		characters, err := svc.List()
 		if err != nil {
 			fmt.Printf("Error listing characters: %v\n", err)
 			os.Exit(1)
 		}
 
-		if len(summaries) == 0 {
+		if len(characters) == 0 {
 			fmt.Println("No characters found.")
 			return
 		}
 
 		fmt.Println("Characters:")
-		for _, summary := range summaries {
-			fmt.Printf("  %s - Level %d %s %s\n", summary.Name, summary.Level, summary.Race, summary.Class)
+		for _, char := range characters {
+			fmt.Printf("  %s - Level %d %s %s\n", char.Name, char.Level, char.Race, char.Class)
 		}
 
 	case "delete":
@@ -295,23 +329,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Use the new storage adapter which implements the repository port.
-		// We only need Delete by name here, so we can call the adapter directly
-		// without converting between storage/domain models.
+		// Use application service for deletion
 		repo := storageAdapter.NewJSONRepository("characters.json")
+		svc := application.NewCharacterService(repo)
 
-		// Check if character exists before attempting to delete by delegating to
-		// the underlying single-file storage via the existing storage package.
-		// We use the old storage loader for existence check to avoid mapping here.
-		rawStore := storage.NewSingleFileStorage("characters.json")
-		_, err := rawStore.Load(*name)
+		// Check if character exists
+		_, err := svc.Get(*name)
 		if err != nil {
 			fmt.Printf("Character '%s' not found\n", *name)
 			os.Exit(1)
 		}
 
-		// Delete via adapter (which delegates to the same backend)
-		err = repo.Delete(*name)
+		// Delete via service
+		err = svc.Delete(*name)
 		if err != nil {
 			fmt.Printf("Error deleting character: %v\n", err)
 			os.Exit(1)
