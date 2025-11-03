@@ -4,12 +4,11 @@ import (
 	"flag"
 	"fmt"
 	apiAdapter "modules/dndcharactersheet/internal/adapters/api"
+	refDataAdapter "modules/dndcharactersheet/internal/adapters/referencedata"
 	spellAdapter "modules/dndcharactersheet/internal/adapters/spellcasting"
 	storageAdapter "modules/dndcharactersheet/internal/adapters/storage"
 	"modules/dndcharactersheet/internal/application"
-	backgroundModel "modules/dndcharactersheet/internal/domain/background"
 	domainChar "modules/dndcharactersheet/internal/domain/character"
-	classModel "modules/dndcharactersheet/internal/domain/class"
 	"modules/dndcharactersheet/internal/domain/spellcasting"
 	"os"
 	"strings"
@@ -69,34 +68,23 @@ func main() {
 			os.Exit(2)
 		}
 
-		// Load backgrounds from JSON
-		backgrounds, err := backgroundModel.LoadBackgrounds("backgrounds.json")
+		// Load backgrounds using repository adapter
+		bgRepo := refDataAdapter.NewJSONBackgroundRepository("backgrounds.json")
+		selectedBgPtr, err := bgRepo.FindByName(*background)
 		if err != nil {
-			fmt.Println("Could not load backgrounds:", err)
+			fmt.Println("Could not find background:", err)
 			os.Exit(1)
 		}
+		selectedBackground := *selectedBgPtr
 
-		var selectedBackground backgroundModel.Background
-		for _, bg := range backgrounds {
-			if strings.EqualFold(bg.Name, *background) {
-				selectedBackground = bg
-				break
-			}
-		}
-
-		classes, err := classModel.LoadClasses("classes.json")
+		// Load classes using repository adapter
+		classRepo := refDataAdapter.NewJSONClassRepository("classes.json")
+		selectedClassPtr, err := classRepo.FindByName(*class)
 		if err != nil {
-			fmt.Println("Could not load classes:", err)
+			fmt.Println("Could not find class:", err)
 			os.Exit(1)
 		}
-
-		var selectedClass classModel.Class
-		for _, cls := range classes {
-			if strings.EqualFold(cls.Name, *class) {
-				selectedClass = cls
-				break
-			}
-		}
+		selectedClass := *selectedClassPtr
 
 		// Creating character using domain layer
 		builder := application.NewCharacterBuilder()
