@@ -1,11 +1,13 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 
+	stor "modules/dndcharactersheet/internal/adapters/storage/jsonstorage"
 	characterpkg "modules/dndcharactersheet/internal/domain/character"
+	"modules/dndcharactersheet/internal/domain/spellcasting"
 	"modules/dndcharactersheet/internal/ports"
-	stor "modules/dndcharactersheet/internal/storage"
 )
 
 // JSONRepository implements ports.CharacterRepository by delegating to the existing
@@ -119,7 +121,7 @@ func storageToDomain(s *stor.Character) *characterpkg.Character {
 		OffHand:            s.OffHand,
 		Armor:              s.Armor,
 		Shield:             s.Shield,
-		Spellcasting:       s.Spellcasting,
+		Spellcasting:       unmarshalSpellcasting(s.Spellcasting),
 		StrMod:             s.StrMod,
 		DexMod:             s.DexMod,
 		ConMod:             s.ConMod,
@@ -132,4 +134,25 @@ func storageToDomain(s *stor.Character) *characterpkg.Character {
 		SpellAttackBonus:   s.SpellAttackBonus,
 	}
 	return d
+}
+
+// unmarshalSpellcasting converts the storage interface{} back to domain spellcasting type.
+func unmarshalSpellcasting(data interface{}) interface{} {
+	if data == nil {
+		return nil
+	}
+
+	// When loading from JSON, interface{} will be a map[string]interface{}
+	// We need to re-marshal and unmarshal it into the proper domain type
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+
+	var sc spellcasting.Spellcasting
+	if err := json.Unmarshal(jsonBytes, &sc); err != nil {
+		return nil
+	}
+
+	return &sc
 }
