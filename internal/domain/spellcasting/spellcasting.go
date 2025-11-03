@@ -13,10 +13,10 @@ const (
 
 // Spellcasting represents a character's spellcasting capabilities.
 type Spellcasting struct {
-	CasterType     CasterType  `json:"CasterType"`
-	KnownSpells    []string    `json:"KnownSpells"`
-	PreparedSpells []string    `json:"PreparedSpells"`
-	SpellSlots     map[int]int `json:"SpellSlots"` // Spell level -> number of slots
+	CasterType     CasterType
+	KnownSpells    []string
+	PreparedSpells []string
+	SpellSlots     map[int]int // Spell level -> number of slots
 }
 
 // CanCast returns true if this caster type can cast spells.

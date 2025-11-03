@@ -1,21 +1,8 @@
 package backgroundModel
 
-import (
-	"encoding/json"
-	"os"
-)
-
+// Background represents character background reference data.
+// This is a pure domain value object with no infrastructure dependencies.
 type Background struct {
-	Name               string   `json:"name"`
-	SkillProficiencies []string `json:"skill_proficiencies"`
-}
-
-func LoadBackgrounds(filename string) ([]Background, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	var backgrounds []Background
-	err = json.Unmarshal(data, &backgrounds)
-	return backgrounds, err
+	Name               string
+	SkillProficiencies []string
 }

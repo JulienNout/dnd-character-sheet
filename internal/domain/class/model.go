@@ -1,22 +1,9 @@
 package classModel
 
-import (
-	"encoding/json"
-	"os"
-)
-
+// Class represents character class reference data.
+// This is a pure domain value object with no infrastructure dependencies.
 type Class struct {
-	Name               string   `json:"name"`
-	SkillProficiencies []string `json:"skill_proficiencies"`
-	SkillCount         int      `json:"skill_count"` // How many skills they can choose
-}
-
-func LoadClasses(filename string) ([]Class, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	var classes []Class
-	err = json.Unmarshal(data, &classes)
-	return classes, err
+	Name               string
+	SkillProficiencies []string
+	SkillCount         int // How many skills they can choose
 }
