@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	backgroundModel "modules/dndcharactersheet/internal/background"
-	classModel "modules/dndcharactersheet/internal/class"
+	backgroundModel "modules/dndcharactersheet/internal/domain/background"
+	classModel "modules/dndcharactersheet/internal/domain/class"
 )
 
 // CharacterBuilder provides helper functions for building characters.
