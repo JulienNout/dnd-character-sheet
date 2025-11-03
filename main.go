@@ -121,9 +121,17 @@ func main() {
 		// Save character using application service
 		repo := storageAdapter.NewJSONRepository("characters.json")
 		svc := application.NewCharacterService(repo)
+
+		// Assign spellcasting for caster classes
+		spellRepo := spellAdapter.NewCSVSpellRepository("5e-SRD-Spells.csv")
+		spellEng := spellAdapter.NewEngineAdapter(spellRepo)
+		if sc, err := spellEng.AssignSpellcasting(char.Class, char.Level); err == nil && sc != nil {
+			char.Spellcasting = sc
+		}
+
 		// Optionally recalc derived using API enrichers if available
 		api := apiAdapter.NewAPIAdapter("http://localhost:3000/api/2014")
-		svc.WithEnrichers(api, api, api).RecalculateDerived(&char)
+		svc.WithEnrichers(api, api, api).WithSpellcasting(spellEng).RecalculateDerived(&char)
 		err = svc.Create(&char)
 		if err != nil {
 			fmt.Printf("%v\n", err)
@@ -194,6 +202,15 @@ func main() {
 		cantripsStr := spellEng.FormatCantrips(domainCharPtr.Spellcasting)
 		if cantripsStr != "" {
 			fmt.Print(cantripsStr)
+		}
+
+		// Print spellcasting stats if character is a caster
+		if domainCharPtr.Spellcasting != nil {
+			abilityName := svc.GetSpellcastingAbilityName(domainCharPtr.Class)
+			spellSaveDC := svc.CalculateSpellSaveDC(domainCharPtr)
+			fmt.Printf("Spellcasting ability: %s\n", abilityName)
+			fmt.Printf("Spell save DC: %d\n", spellSaveDC)
+			fmt.Printf("Spell attack bonus: +%d\n", domainCharPtr.SpellAttackBonus)
 		}
 
 		// Print known and prepared spells if available

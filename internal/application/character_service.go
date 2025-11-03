@@ -71,6 +71,12 @@ func (s *CharacterService) RecalculateDerived(c *characterpkg.Character) {
 	}
 	c.PassivePerception = passive
 
+	// Spell Attack Bonus: Proficiency + Spellcasting Ability Modifier (if caster)
+	if c.Spellcasting != nil {
+		spellMod := s.getSpellcastingModifier(c)
+		c.SpellAttackBonus = c.Proficiency + spellMod
+	}
+
 	// Armor Class calculation
 	if s.armorEnricher == nil {
 		// Fallback minimal rule: base 10 + Dex mod (+2 if shield)
@@ -242,4 +248,43 @@ func (s *CharacterService) PrepareSpell(characterName, spellName string) error {
 	}
 	char.Spellcasting = updated
 	return s.repo.Save(char)
+}
+
+// getSpellcastingModifier returns the ability modifier for spellcasting based on class.
+func (s *CharacterService) getSpellcastingModifier(c *characterpkg.Character) int {
+	class := strings.ToLower(strings.TrimSpace(c.Class))
+	switch class {
+	case "wizard", "artificer":
+		return c.IntMod
+	case "cleric", "druid", "ranger":
+		return c.WisMod
+	case "bard", "sorcerer", "warlock", "paladin":
+		return c.ChaMod
+	default:
+		return c.IntMod // Default to INT
+	}
+}
+
+// GetSpellcastingAbilityName returns the name of the spellcasting ability for display.
+func (s *CharacterService) GetSpellcastingAbilityName(class string) string {
+	class = strings.ToLower(strings.TrimSpace(class))
+	switch class {
+	case "wizard", "artificer":
+		return "intelligence"
+	case "cleric", "druid", "ranger":
+		return "wisdom"
+	case "bard", "sorcerer", "warlock", "paladin":
+		return "charisma"
+	default:
+		return "intelligence"
+	}
+}
+
+// CalculateSpellSaveDC returns spell save DC: 8 + proficiency + spellcasting modifier.
+func (s *CharacterService) CalculateSpellSaveDC(c *characterpkg.Character) int {
+	if c.Spellcasting == nil {
+		return 0
+	}
+	spellMod := s.getSpellcastingModifier(c)
+	return 8 + c.Proficiency + spellMod
 }
