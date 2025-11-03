@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	characterModel "modules/dndcharactersheet/internal/character"
 	"os"
 )
 
@@ -14,7 +13,7 @@ type SingleFileStorage struct {
 
 // CharactersFile represents the structure of the single JSON file
 type CharactersFile struct {
-	Characters []characterModel.Character `json:"characters"`
+	Characters []Character `json:"characters"`
 }
 
 // NewSingleFileStorage creates a new single file storage instance
@@ -27,7 +26,7 @@ func NewSingleFileStorage(filename string) *SingleFileStorage {
 // loadCharactersFile loads all characters from the JSON file
 func (sfs *SingleFileStorage) loadCharactersFile() (*CharactersFile, error) {
 	charactersFile := &CharactersFile{
-		Characters: []characterModel.Character{},
+		Characters: []Character{},
 	}
 
 	// Check if file exists
@@ -66,7 +65,7 @@ func (sfs *SingleFileStorage) saveCharactersFile(charactersFile *CharactersFile)
 }
 
 // Save stores a character in the single JSON file
-func (sfs *SingleFileStorage) Save(character characterModel.Character) error {
+func (sfs *SingleFileStorage) Save(character Character) error {
 	charactersFile, err := sfs.loadCharactersFile()
 	if err != nil {
 		return err
@@ -91,10 +90,10 @@ func (sfs *SingleFileStorage) Save(character characterModel.Character) error {
 }
 
 // Load retrieves a character by name from the single JSON file
-func (sfs *SingleFileStorage) Load(name string) (characterModel.Character, error) {
+func (sfs *SingleFileStorage) Load(name string) (Character, error) {
 	charactersFile, err := sfs.loadCharactersFile()
 	if err != nil {
-		return characterModel.Character{}, err
+		return Character{}, err
 	}
 
 	// Find the character by name
@@ -104,7 +103,7 @@ func (sfs *SingleFileStorage) Load(name string) (characterModel.Character, error
 		}
 	}
 
-	return characterModel.Character{}, fmt.Errorf("character '%s' not found", name)
+	return Character{}, fmt.Errorf("character '%s' not found", name)
 }
 
 // List returns a summary of all stored characters
