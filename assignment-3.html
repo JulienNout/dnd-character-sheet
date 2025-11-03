@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Modern Programming Practices - Exam</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="modern-programming-practices---exam">Modern Programming Practices - Exam</h1>
+<table>
+<thead>
+<tr>
+<th>Metadata</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Course code</td>
+<td>CU75045V1</td>
+</tr>
+<tr>
+<td>Lecturer</td>
+<td>Loek van der Linde</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>27-10-2025</td>
+</tr>
+<tr>
+<td>Deadline</td>
+<td>02-11-2025 23:59</td>
+</tr>
+<tr>
+<td>Opportunity</td>
+<td>1st</td>
+</tr>
+</tbody>
+</table>
+<h2 id="do-this-first">Do this first</h2>
+<p>If you haven't already version controlled your code, do so <strong>now</strong>. Initialize a git repository and commit the current status. You have to hand in a git diff comparing your exam with your current code at the end of this exam. If you can't hand in a git diff from your current code, your exam will not be valid and will not be graded.</p>
+<p>You don't have to put your repository on GitHub. Just create a local repo and commit the current status.</p>
+<p>If you need help with initializing, committing and diffing then look at your exam from CIN where you had to do all of that.</p>
+<h2 id="assignment">Assignment</h2>
+<p>Read the grading criteria on the last page of this document. If your app can't possibly pass the <em>Architecture</em> criterion, you're allowed to rewrite it so that it does[^footnote1]. By now you've hopefully figured out there are only two sane architectural decisions: either a standard three-tier app, or Onion architecture (/Clean/Hegaxonal architecture).</p>
+<p>If you're choosing to rewrite, you can keep using CodeGrade to check whether your code still passes all the tests. When you're happy with your rewrite, make another commit and save the git diff comparing it against your first code. If you rewrite, you have to submit 2 git diffs! One of your first code comparing with your new code, and then another one comparing your exam implementation with your new code.</p>
+<p>[^footnote1]: Note that this goes for about half of you: I didn't teach you 11 lectures + had you do loads of reading on good programming just so you can write the equivalent of a 1000 line if-statement and expect to pass. Don't get me wrong, I'm not salty or angry. I just don't understand why I say it's an 80-100 hour assignment and your submission basically amounts to the Gilded Rose starter code pumped up on five barrels of steroids, mostly written by [insert your favorite chatbot]. I hope it was fun writing it at least..?</p>
+<p>When you're happy with your (new) code, your exam assignment is below.</p>
+<h3 id="exam---racial-skill-proficiencies">Exam - Racial skill proficiencies</h3>
+<p>Show racial skill proficiencies in your character sheets! The SRD lists quite a few, such as <code>Stonecunning</code> for a Dwarf, and <code>Keen senses</code> for Elf.</p>
+<p>You can ignore prerequisites and special modifiers and just handle them as regular proficiencies. According to the SRD a Dwarf could add double proficiency bonus on a History check when it's related to stone. But we're implementing a regular proficiency: in our app, <code>Stonecunning</code> means that a Dwarf is proficient in History.</p>
+<p>Below are two test cases:</p>
+<table>
+<thead>
+<tr>
+<th>Test case</th>
+<th>Skill proficiencies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Level 1 Dwarf Acolyte Rogue</td>
+<td>acrobatics, athletics, deception, insight, insight, history, religion</td>
+</tr>
+<tr>
+<td>Level 1 Half-Orc Acolyte Barbarian</td>
+<td>animal handling, athletics, insight, intimidation, religion</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-do-you-submit">What do you submit</h2>
+<ol>
+<li>A git diff of your exam code compared to the code that you started with before the exam;</li>
+<li>In case you opted to rewrite your starting code: a git diff comparing your first starting code with your new starting code;</li>
+<li>A .zip of your code;</li>
+<li>A short report containing explanation for the Maintainability and Testing criteria. Take as much or as little words/graphics as you need.</li>
+</ol>
+<h2 id="grading-criteria">Grading criteria</h2>
+<p>You can earn 100 points for the exam. Your grade is your amount of points divided by 10.</p>
+<p>There are four entry requirements for this exam:</p>
+<ol>
+<li>You have finished the CodeGrade assignment on 100%;</li>
+<li>You successfully implemented the requested feature;</li>
+<li>Your code compiles;</li>
+<li>You have submitted all the necessary things.</li>
+</ol>
+<p>When you don't meet these criteria, your submission will not be graded and you will not receive feedback.</p>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Points</th>
+<th>0%</th>
+<th>50%</th>
+<th>100%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Architecture (measured through extensibility)</td>
+<td>60</td>
+<td>Responsiblities are all over the place. Implementing the feature forces cascading changes throughout the codebase, thereby violating the open/closed principle</td>
+<td>One or two functionalities exist in the wrong layer, but otherwise well-written. Implementing the feature forces cascading changes, but barely: in only one or two places, thereby almost adhering to the open/closed principle</td>
+<td>Good architecture where all functionalities exist in the right layers. Implementing the features does not force cascading changes, fully adhering to the open/closed principle</td>
+</tr>
+<tr>
+<td>Maintainability</td>
+<td>20</td>
+<td>No (good enough) effort has been put in explaining why the code is good</td>
+<td>Can explain why the code is good but does not show concrete proof, i.e. metrics, (graphic) models or other reputable sources</td>
+<td>Shows why the code is good with concrete proof</td>
+</tr>
+<tr>
+<td>Testing</td>
+<td>20</td>
+<td>No testing has been done</td>
+<td>Tests show the functionality passes the happy path</td>
+<td>Tests show a combination of manual and automated tests OR show that important edge cases have been handled</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>
